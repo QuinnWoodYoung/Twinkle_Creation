@@ -1,0 +1,19 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a3a4c4fe76c2cf7408e7124798ca142d, type: 3}
+  m_Name: "\u98CE\u66B4\u4E4B\u9524\uFF01"
+  m_EditorClassIdentifier: 
+  description: 
+  projectilePrefab: {fileID: 4151553148700812504, guid: f585021a68fe83e44822c2ad17aa8733, type: 3}
+  spawnOffset: {x: 0, y: 1.5, z: 1}
+  homingMode: 1
+  minLaunchDistance: 2

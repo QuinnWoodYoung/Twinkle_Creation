@@ -1,0 +1,25 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8735b4492df3aac44be8ad64d7a261b1, type: 3}
+  m_Name: "\u98CE\u66B4\u4E4B\u62F32.0"
+  m_EditorClassIdentifier: 
+  skillName: 
+  skillDescribe: 
+  cooldown: 2
+  maxCastRange: 10
+  targetingMode: 1
+  targetTeamRule: 1
+  legacyRequiresTargetUnit: 0
+  clampToMaxRange: 0
+  effects:
+  - {fileID: 11400000, guid: 1454b95cb92905c4c85ad05df07c092f, type: 2}
+  - {fileID: 11400000, guid: 2c6a8e1641dbf0d419c9673ef35ced20, type: 2}

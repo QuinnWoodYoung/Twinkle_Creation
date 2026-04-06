@@ -1,0 +1,30 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8735b4492df3aac44be8ad64d7a261b1, type: 3}
+  m_Name: "\u95EA\u7535"
+  m_EditorClassIdentifier: 
+  skillName: "\u95EA\u7535\u94FE"
+  skillDescribe: "\u5BF9\u76EE\u6807\u964D\u4E0B\u8FDE\u9501\u95EA\u7535\uFF0C\u4F9D\u6B21\u5F39\u5C04\u9644\u8FD1\u654C\u4EBA\u3002"
+  cooldown: 0
+  maxCastRange: 10
+  targetingMode: 1
+  targetTeamRule: 1
+  legacyRequiresTargetUnit: 0
+  clampToMaxRange: 0
+  faceSkillDirectionOnCast: 1
+  faceDirectionLockDuration: 0.12
+  requireFacingBeforeCast: 1
+  castFacingAngleTolerance: 5
+  lockMovementDuringFacing: 1
+  cancelFacingCastOnMoveInput: 0
+  effects:
+  - {fileID: 11400000, guid: f5291da9f206f2a4a866400878ca844a, type: 2}

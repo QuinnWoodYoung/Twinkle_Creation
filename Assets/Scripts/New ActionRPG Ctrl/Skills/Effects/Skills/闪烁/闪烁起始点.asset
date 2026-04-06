@@ -1,0 +1,24 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ff8e18c6a7358064189c8d8d1318696d, type: 3}
+  m_Name: "\u95EA\u70C1\u8D77\u59CB\u70B9"
+  m_EditorClassIdentifier: 
+  vfxPrefab: {fileID: 934617562227915448, guid: 4e05db48b6a7d5141bc36642f3a63223, type: 3}
+  spawnPoint: 1
+  directionSource: 0
+  attachTarget: 0
+  attachToTarget: 0
+  rotateWithDirection: 1
+  localOffsetUsesDirection: 1
+  positionOffset: {x: 0, y: 0, z: 0}
+  eulerOffset: {x: 0, y: 0, z: 0}
+  autoDestroyDelay: 5

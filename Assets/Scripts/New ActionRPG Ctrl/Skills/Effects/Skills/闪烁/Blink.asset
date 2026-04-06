@@ -1,0 +1,32 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8735b4492df3aac44be8ad64d7a261b1, type: 3}
+  m_Name: Blink
+  m_EditorClassIdentifier: 
+  skillName: "\u6CD5\u529B\u95EA\u70C1"
+  skillDescribe: 
+  cooldown: 1
+  maxCastRange: 10
+  targetingMode: 0
+  targetTeamRule: 0
+  legacyRequiresTargetUnit: 0
+  clampToMaxRange: 1
+  faceSkillDirectionOnCast: 1
+  faceDirectionLockDuration: 0.1
+  requireFacingBeforeCast: 1
+  castFacingAngleTolerance: 5
+  lockMovementDuringFacing: 1
+  cancelFacingCastOnMoveInput: 1
+  effects:
+  - {fileID: 11400000, guid: a8d361efbf019964d9f466c2c8885593, type: 2}
+  - {fileID: 11400000, guid: 77bff7218adae234ca8f9a2188cf164f, type: 2}
+  - {fileID: 11400000, guid: fc173ee0b2254f44b90bd2a95bec6d87, type: 2}

@@ -1,0 +1,4 @@
+interface:
+  display_name: "M Game Context"
+  short_description: "Unity repo architecture and guardrails."
+  default_prompt: "Use this skill when working inside the M Game Unity project. Read the architecture references, identify whether the task belongs to the legacy controller stack or the newer ActionRPG stack, and preserve scene, save, inventory, and singleton behavior before editing."
