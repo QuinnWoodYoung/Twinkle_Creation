@@ -21,7 +21,11 @@ public class SlotHolder : MonoBehaviour,IPointerClickHandler
         if(itemUI.GetItem() != null)
             if(itemUI.GetItem().itemType == ItemType.useable && itemUI.Bag.items[itemUI.Index].amount > 0)
             {
-                GameManager.Instance.playerStats.ApplyHealth(itemUI.GetItem().itemData.healthPoint);
+                GameObject playerUnit = GameManager.Instance != null ? GameManager.Instance.PlayerUnit : null;
+                if (playerUnit != null)
+                {
+                    CharResourceResolver.ApplyHeal(playerUnit, itemUI.GetItem().itemData.healthPoint);
+                }
 
                 itemUI.Bag.items[itemUI.Index].amount -= 1;
             }
@@ -37,16 +41,19 @@ public class SlotHolder : MonoBehaviour,IPointerClickHandler
                 itemUI.Bag = InventoryManager.Instance.inventoryData;
                 break;
             case SlotType.WEAPON:
+            {
                 itemUI.Bag = InventoryManager.Instance.equipmentData;
+                GameObject playerUnit = GameManager.Instance != null ? GameManager.Instance.PlayerUnit : null;
                 if (itemUI.Bag.items[itemUI.Index].itemData != null)
                 {
-                    GameManager.Instance.playerStats.ChangeWeapon(itemUI.Bag.items[itemUI.Index].itemData);
+                    CharEquipmentRuntime.ChangeWeapon(playerUnit, itemUI.Bag.items[itemUI.Index].itemData);
                 }
                 else
                 {
-                    GameManager.Instance.playerStats.UnEquipWeapon();
+                    CharEquipmentRuntime.UnEquipWeapon(playerUnit);
                 }
                 break;
+            }
             case SlotType.ARMOR:
                 break;
             case SlotType.ACTION:

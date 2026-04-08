@@ -15,11 +15,21 @@ MonoBehaviour:
   skillName: 
   skillDescribe: 
   cooldown: 2
+  castAnimType: 0
+  castAnimDur: 0
+  lockMoveOnCastAnim: 0
+  lockRotateOnCastAnim: 0
   maxCastRange: 10
   targetingMode: 1
   targetTeamRule: 1
   legacyRequiresTargetUnit: 0
   clampToMaxRange: 0
+  faceSkillDirectionOnCast: 1
+  faceDirectionLockDuration: 0.12
+  requireFacingBeforeCast: 1
+  castFacingAngleTolerance: 5
+  lockMovementDuringFacing: 1
+  cancelFacingCastOnMoveInput: 0
   effects:
   - {fileID: 11400000, guid: 1454b95cb92905c4c85ad05df07c092f, type: 2}
   - {fileID: 11400000, guid: 2c6a8e1641dbf0d419c9673ef35ced20, type: 2}

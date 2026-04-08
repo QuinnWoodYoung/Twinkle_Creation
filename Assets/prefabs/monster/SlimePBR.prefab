@@ -324,6 +324,13 @@ GameObject:
   - component: {fileID: 8952210125481963117}
   - component: {fileID: 8952210125481963114}
   - component: {fileID: 3389689287753767985}
+  - component: {fileID: 9181560965695437636}
+  - component: {fileID: 5155487831465085710}
+  - component: {fileID: -2847569639522844430}
+  - component: {fileID: -3166592484975364816}
+  - component: {fileID: -9128247405863411193}
+  - component: {fileID: -6494166735337135932}
+  - component: {fileID: -6110476660676942864}
   m_Layer: 8
   m_Name: SlimePBR
   m_TagString: Enemies
@@ -388,7 +395,14 @@ MonoBehaviour:
   attackData: {fileID: 11400000, guid: e7761dc1f18d2924c99fa25f421b555d, type: 2}
   isCritical: 0
   isDead: 0
-  weaponSlot: {fileID: 0}
+  rightHandSlot: {fileID: 0}
+  leftHandSlot: {fileID: 0}
+  _breakOnDmg: 1
+  _useHitReact: 1
+  _hitReactDur: 0.2
+  _hitReactLockMove: 1
+  _hitReactLockRotate: 0
+  _hitReactAnimKey: 
 --- !u!136 &8952210125481963112
 CapsuleCollider:
   m_ObjectHideFlags: 0
@@ -489,6 +503,287 @@ MonoBehaviour:
   barPoint: {fileID: 1128047055698040972}
   alwaysVisible: 1
   visibleTime: 0
+--- !u!114 &9181560965695437636
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8951593624410888271}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e4f54201c92df34489de9e3873efea80, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  _legacyMap:
+  - oldStatus: 7
+    def: {fileID: 11400000, guid: 8862929491512aa46a57994aebbc2fb1, type: 2}
+    immuneMask: 0
+  - oldStatus: 1
+    def: {fileID: 11400000, guid: 7f77e25cb4bd8f14db74186a28147420, type: 2}
+    immuneMask: 5
+  - oldStatus: 2
+    def: {fileID: 11400000, guid: 3d4eec090f6dd1d4c8b09a23361759cf, type: 2}
+    immuneMask: 9
+  - oldStatus: 4
+    def: {fileID: 11400000, guid: a64ca436627bf804d85fde0a9934dbe1, type: 2}
+    immuneMask: 3
+  - oldStatus: 0
+    def: {fileID: 11400000, guid: 726fdf71f97f0cd4ea124b5f2c1c1b5f, type: 2}
+    immuneMask: 1
+  _list:
+  - rtId: 0
+    def: {fileID: 11400000, guid: 726fdf71f97f0cd4ea124b5f2c1c1b5f, type: 2}
+    applier: {fileID: 0}
+    src: {fileID: 0}
+    remain: 0
+    elapsed: 0
+    stack: 0
+    power: 0
+  _snap:
+    tags: 0
+    restricts: 0
+    immunes: 0
+    actionState: 0
+    domCtrlTag: 0
+    moveSpdMul: 1
+    moveSpdAdd: 0
+    atkSpdMul: 1
+    castSpdMul: 1
+    turnSpdMul: 1
+    dmgTakenMul: 1
+    canMove: 1
+    canAtk: 1
+    canCast: 1
+    canRotate: 1
+    canSelect: 1
+    canUnitTarget: 1
+    canAtkTarget: 1
+--- !u!114 &5155487831465085710
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8951593624410888271}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c2b4f2dc0e304bf9bcb60eaf6bca4c7a, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  _features:
+    useResources: 1
+    useCombat: 1
+    useStatus: 1
+    useSkills: 1
+    useEquipment: 1
+    useTargeting: 1
+  _identity:
+    runtimeId: SlimePBR_-481364
+    unitId: SlimePBR
+    ownerPlayerId: 
+    netId: 
+    isPlayerControlled: 0
+    team: {fileID: -3166592484975364816}
+    teamId: 1
+    teamSide: 1
+  _transformState:
+    position: {x: 2.69, y: 0.5, z: 6.23}
+    forward: {x: 0, y: 0, z: 1}
+  _motion:
+    moveInput: {x: 0, y: 0}
+    aimInput: {x: 0, y: 0}
+    moveVector: {x: 0, y: 0, z: 0}
+    velocity: {x: 0, y: 0, z: 0}
+    baseMoveSpeed: 3
+    baseTurnSpeed: 720
+    canMove: 1
+    canRotate: 1
+    isMoving: 0
+  _action:
+    state: 0
+    hasAction: 0
+    controlLockCount: 0
+    isControlLocked: 0
+    isWaitingFace: 0
+    isCasting: 0
+    isAttacking: 0
+    isDead: 0
+    isInterrupted: 0
+    animKey: 
+    source: {fileID: 0}
+  _resources:
+    hasHealth: 1
+    hp: 100
+    maxHp: 100
+    hasMana: 0
+    mp: 0
+    maxMp: 0
+  _combat:
+    attackPower: 10
+    criticalAttackPower: 10
+    attackSpeed: 1
+    attackSpeedMul: 1
+    attackRange: 1.5
+    maxAttackRange: 3
+    attackCooldown: 1
+    castSpeed: 1
+    castSpeedMul: 1
+    isCritical: 0
+    damageTakenMul: 1
+    damageImmuneCount: 0
+  _status:
+    runtimeStatuses: []
+    snapshot:
+      tags: 0
+      restricts: 0
+      immunes: 0
+      actionState: 0
+      domCtrlTag: 0
+      moveSpdMul: 1
+      moveSpdAdd: 0
+      atkSpdMul: 1
+      castSpdMul: 1
+      turnSpdMul: 1
+      dmgTakenMul: 1
+      canMove: 1
+      canAtk: 1
+      canCast: 1
+      canRotate: 1
+      canSelect: 1
+      canUnitTarget: 1
+      canAtkTarget: 1
+  _skills:
+    slots: []
+    cooldowns: []
+    pendingCast: 0
+    pendingSlot: -1
+  _equipment:
+    weaponType: 4
+    weaponRoot: {fileID: 0}
+  _targeting:
+    lockedTarget: {fileID: 0}
+    currentTarget: {fileID: 0}
+    aimPoint: {x: 0, y: 0, z: 0}
+--- !u!114 &-2847569639522844430
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8951593624410888271}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b99a4d92699c4da4b8243da7fb8a533d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  _initializeOnAwake: 1
+  _applyFeatureOverrides: 0
+  _featureOverrides:
+    useResources: 1
+    useCombat: 1
+    useStatus: 1
+    useSkills: 1
+    useEquipment: 1
+    useTargeting: 1
+  _unitId: 
+  _ownerPlayerId: 
+  _netId: 
+  _isPlayerControlled: 0
+  _teamId: -1
+  _teamSide: 1
+  _hasHealth: 1
+  _resourceTemplate: {fileID: 11400000, guid: 1e5d02b30fe9928488eaaff3e0cbab27, type: 2}
+  _startHp: -1
+  _maxHp: -1
+  _attackTemplate: {fileID: 11400000, guid: e7761dc1f18d2924c99fa25f421b555d, type: 2}
+  _attackPower: -1
+  _criticalAttackPower: -1
+  _attackSpeed: -1
+  _attackRange: -1
+  _maxAttackRange: -1
+  _attackCooldown: -1
+  _castSpeed: -1
+  _isCritical: 0
+  _initialLegacyStatuses: []
+--- !u!114 &-3166592484975364816
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8951593624410888271}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 6c3018550b012e2449e1073c8a3e6d6d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  side: 1
+  useExplicitTeamId: 0
+  teamId: -1
+--- !u!114 &-9128247405863411193
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8951593624410888271}
+  m_Enabled: 0
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 44f6b7ea431f0854c91904b9db1aa994, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  _charParam:
+    Locomotion: {x: 0, y: 0}
+    AimTarget: {x: 0, y: 0}
+    isLock: 0
+    Dodge: 0
+  moveDir: {x: 0, y: 0, z: 0}
+  moveSpeed: 3
+  turnSpeedDegrees: 720
+--- !u!143 &-6494166735337135932
+CharacterController:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8951593624410888271}
+  m_Material: {fileID: 0}
+  m_IsTrigger: 0
+  m_Enabled: 0
+  serializedVersion: 2
+  m_Height: 1
+  m_Radius: 0.5
+  m_SlopeLimit: 45
+  m_StepOffset: 0.3
+  m_SkinWidth: 0.08
+  m_MinMoveDistance: 0.001
+  m_Center: {x: 0, y: 0, z: 0}
+--- !u!114 &-6110476660676942864
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8951593624410888271}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5a71e253b9bef9e4583a4006b9dffefe, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  _state: 1
+  _curReq:
+    type: 0
+    state: 0
+    src: {fileID: 0}
+    dur: 0
+    lockMove: 0
+    lockRotate: 0
+    interruptible: 1
+    animKey: 
+    waitFace: 0
+    faceDir: {x: 0, y: 0, z: 0}
+    faceTol: 5
 --- !u!1 &8951658400147966907
 GameObject:
   m_ObjectHideFlags: 0

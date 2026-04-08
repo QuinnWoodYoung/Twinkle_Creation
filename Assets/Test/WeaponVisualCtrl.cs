@@ -51,6 +51,7 @@
 //         }
 //     }
 // }
+#if false
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
@@ -161,6 +162,129 @@ public class WeaponVisualCtrl : MonoBehaviour
             // Debug.Log(item); // 嫌吵可以注释掉
             if(item != null) 
                 item.gameObject.SetActive(false);
+        }
+    }
+}
+#endif
+
+using UnityEngine;
+
+public class WeaponVisualCtrl : MonoBehaviour
+{
+    [Header("武器模型")]
+    [Tooltip("需要统一关闭的所有武器模型。")]
+    [SerializeField] private Transform[] weaponTransforms;
+    [Tooltip("剑模型。")]
+    [SerializeField] private Transform Sword;
+    [Tooltip("斧头模型。")]
+    [SerializeField] private Transform Axe;
+    [Tooltip("弓模型。")]
+    [SerializeField] private Transform Bow;
+    [Tooltip("盾模型。")]
+    [SerializeField] private Transform Shield;
+
+    [Header("引用")]
+    [Tooltip("逻辑武器控制器。WeaponVisualCtrl 只监听它，不再自己切武器逻辑。")]
+    [SerializeField] private CharWeaponCtrl charWeaponCtrl;
+
+    private void Awake()
+    {
+        if (charWeaponCtrl == null)
+        {
+            charWeaponCtrl = GetComponent<CharWeaponCtrl>();
+        }
+    }
+
+    private void OnEnable()
+    {
+        if (charWeaponCtrl != null)
+        {
+            charWeaponCtrl.WeaponChanged += ApplyVisual;
+            ApplyVisual(charWeaponCtrl.CurWeapon);
+        }
+        else
+        {
+            SwitchOffWeapons();
+        }
+    }
+
+    private void OnDisable()
+    {
+        if (charWeaponCtrl != null)
+        {
+            charWeaponCtrl.WeaponChanged -= ApplyVisual;
+        }
+    }
+
+    public void ApplyVisual(WeaponType weaponType)
+    {
+        SwitchOffWeapons();
+
+        switch (weaponType)
+        {
+            case WeaponType.Sword:
+                SetActive(Sword, true);
+                SetActive(Shield, true);
+                break;
+
+            case WeaponType.Axe:
+                SetActive(Axe, true);
+                SetActive(Shield, true);
+                break;
+
+            case WeaponType.Bow:
+                SetActive(Bow, true);
+                break;
+
+            case WeaponType.Shield:
+                SetActive(Shield, true);
+                break;
+        }
+
+        if (charWeaponCtrl != null)
+        {
+            charWeaponCtrl.RefreshWeaponAnim();
+        }
+    }
+
+    public Transform GetWeaponRoot(WeaponType weaponType)
+    {
+        switch (weaponType)
+        {
+            case WeaponType.Sword:
+                return Sword;
+
+            case WeaponType.Axe:
+                return Axe;
+
+            case WeaponType.Bow:
+                return Bow;
+
+            case WeaponType.Shield:
+                return Shield;
+        }
+
+        return null;
+    }
+
+    private void SwitchOffWeapons()
+    {
+        if (weaponTransforms == null)
+        {
+            return;
+        }
+
+        for (int i = 0; i < weaponTransforms.Length; i++)
+        {
+            SetActive(weaponTransforms[i], false);
+        }
+    }
+
+    private void SetActive(Transform target, bool active)
+    {
+        if (target != null)
+        {
+            target.gameObject.SetActive(active);
         }
     }
 }

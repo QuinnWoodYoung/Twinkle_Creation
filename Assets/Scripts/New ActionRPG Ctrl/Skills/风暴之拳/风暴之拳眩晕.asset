@@ -12,6 +12,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 28b3a82798ef9da409803ac8c07c8f11, type: 3}
   m_Name: "\u98CE\u66B4\u4E4B\u62F3\u7729\u6655"
   m_EditorClassIdentifier: 
-  statusToApply: 0
-  whoToApply: 1
+  statusToApply: 1
+  whoToApply: 0
   buffDuration: 3

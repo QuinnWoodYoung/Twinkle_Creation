@@ -46,8 +46,11 @@ public class SceneController : Singleton<SceneController>
         }
         else
         {
-            player = GameManager.Instance.playerStats.gameObject;
-            player.transform.SetPositionAndRotation(GetDestination(destinationTag).transform.position, transform.rotation);
+            player = GameManager.Instance.PlayerUnit;
+            if (player != null)
+            {
+                player.transform.SetPositionAndRotation(GetDestination(destinationTag).transform.position, transform.rotation);
+            }
             yield return null;
         }
     }

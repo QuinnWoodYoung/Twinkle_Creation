@@ -1,40 +1,26 @@
-using UnityEngine;
+﻿using UnityEngine;
 
-/// <summary>
-/// 目标采集器。
-/// 负责把角色当前的输入状态转换成一份 TargetInfo。
-/// 它只负责“收集”，不负责目标是否合法。
-/// </summary>
 public static class TargetingUtil
 {
-    /// <summary>
-    /// 收集一次施法目标。
-    /// 优先级：
-    /// 1. 锁定目标
-    /// 2. 鼠标命中的单位
-    /// 3. 鼠标命中的地面
-    /// 4. 脚下平面的投影点
-    /// </summary>
-    public static TargetInfo Collect(CharCtrl caster, LayerMask groundLayer, LayerMask unitLayer)
+    public static TargetInfo Collect(CharCtrl caster, LayerMask groundLayer)
     {
         TargetInfo info = new TargetInfo();
         Vector3 finalPos;
 
-        // 1. 优先级最高：如果当前有锁定目标，直接取锁定数据，无视鼠标
         if (caster.LockedTarget != null)
         {
-            info.unit = caster.LockedTarget.gameObject;
-            finalPos = caster.LockedTarget.position;
+            GameObject lockedUnit = CharRelationResolver.NormalizeUnit(caster.LockedTarget.gameObject);
+            info.unit = lockedUnit;
+            finalPos = lockedUnit != null ? lockedUnit.transform.position : caster.LockedTarget.position;
         }
         else
         {
-            // 2. 优先级次之：鼠标射线探测
             Ray ray = Camera.main.ScreenPointToRay(caster.Param.AimTarget);
-            
-            if (Physics.Raycast(ray, out RaycastHit unitHit, 1000f, unitLayer))
+            GameObject hitUnit = FindFirstUnitOnRay(ray, 1000f);
+            if (hitUnit != null)
             {
-                info.unit = unitHit.collider.gameObject;
-                finalPos = unitHit.collider.transform.position;
+                info.unit = hitUnit;
+                finalPos = hitUnit.transform.position;
             }
             else if (Physics.Raycast(ray, out RaycastHit groundHit, 500f, groundLayer))
             {
@@ -42,7 +28,6 @@ public static class TargetingUtil
             }
             else
             {
-                // 兜底：投影到脚下平面
                 Plane groundPlane = new Plane(Vector3.up, caster.transform.position);
                 groundPlane.Raycast(ray, out float enter);
                 finalPos = ray.GetPoint(enter);
@@ -50,10 +35,31 @@ public static class TargetingUtil
         }
 
         info.position = finalPos;
-        Vector3 dir = (finalPos - caster.transform.position);
-        dir.y = 0;
+        Vector3 dir = finalPos - caster.transform.position;
+        dir.y = 0f;
         info.direction = dir.magnitude > 0.1f ? dir.normalized : caster.transform.forward;
-
         return info;
+    }
+
+    private static GameObject FindFirstUnitOnRay(Ray ray, float distance)
+    {
+        RaycastHit[] hits = Physics.RaycastAll(ray, distance);
+        if (hits == null || hits.Length == 0)
+        {
+            return null;
+        }
+
+        System.Array.Sort(hits, (a, b) => a.distance.CompareTo(b.distance));
+        for (int i = 0; i < hits.Length; i++)
+        {
+            if (!CharRelationResolver.TryResolveUnit(hits[i].collider.gameObject, out GameObject unit))
+            {
+                continue;
+            }
+
+            return unit;
+        }
+
+        return null;
     }
 }

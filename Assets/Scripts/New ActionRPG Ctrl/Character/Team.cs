@@ -23,17 +23,34 @@ public class Team : MonoBehaviour
     // 当前单位属于哪个阵营。
     public TeamSide side;
 
+    [Tooltip("启用后，使用下面的 teamId 作为精确阵营编号。")]
+    public bool useExplicitTeamId;
+    [Tooltip("可选的显式阵营编号。小于 0 时，默认使用 side 的枚举值。")]
+    public int teamId = -1;
+
+    public int EffectiveTeamId => useExplicitTeamId && teamId >= 0 ? teamId : (int)side;
+
     /// <summary>
     /// 判断另一个 Team 是否应视为敌人。
-    /// 当前实现里 Neutral 被视为敌对目标。
+    /// 同 side 永远不是敌人；若未来存在多个中立阵营，请使用 teamId 区分。
     /// </summary>
     public bool IsEnemy(Team other)
     {
-        if (other == null || other.side == TeamSide.Neutral)
+        if (other == null)
         {
             return true;
         }
 
-        return side != other.side;
+        if (side == other.side)
+        {
+            return false;
+        }
+
+        if (EffectiveTeamId >= 0 && other.EffectiveTeamId >= 0)
+        {
+            return EffectiveTeamId != other.EffectiveTeamId;
+        }
+
+        return side == TeamSide.Neutral || other.side == TeamSide.Neutral || side != other.side;
     }
 }

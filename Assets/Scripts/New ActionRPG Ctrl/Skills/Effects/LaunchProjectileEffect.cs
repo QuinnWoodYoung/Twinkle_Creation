@@ -50,7 +50,7 @@ public class LaunchProjectileEffect : SkillEffect
         }
 
         GameObject caster = context.caster;
-        GameObject targetUnit = context.rawTarget.unit;
+        GameObject targetUnit = CharRelationResolver.NormalizeUnit(context.rawTarget.unit);
 
         // 目标非常近时，飞行过程通常没有意义，直接触发命中效果更稳定。
         if (targetUnit != null && Vector3.Distance(caster.transform.position, targetUnit.transform.position) < minLaunchDistance)

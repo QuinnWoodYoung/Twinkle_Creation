@@ -15,9 +15,6 @@ MonoBehaviour:
   maxHits: 5
   bounceRadius: 6
   bounceDelay: 0.08
-  targetLayers:
-    serializedVersion: 2
-    m_Bits: 256
   targetTeamRule: 1
   includeInitialTarget: 1
   spawnBoltVfx: 1

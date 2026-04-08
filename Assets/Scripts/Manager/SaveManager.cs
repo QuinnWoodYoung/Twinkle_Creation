@@ -1,4 +1,4 @@
-using System.Collections;
+Ôªøusing System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.SceneManagement;
@@ -8,13 +8,13 @@ public class SaveManager : Singleton<SaveManager>
     string sceneName = "";
 
     public string SceneName { get { return PlayerPrefs.GetString(sceneName); } }
+
     protected override void Awake()
     {
         base.Awake();
         DontDestroyOnLoad(this);
     }
-    
-    
+
     void Update()
     {
         if (Input.GetKeyDown(KeyCode.Escape) && SceneController.Instance.name != "start")
@@ -24,35 +24,51 @@ public class SaveManager : Singleton<SaveManager>
 
         if (Input.GetKeyDown(KeyCode.X))
         {
-            Debug.Log("“—≥…π¶±£¥Ê");
+            Debug.Log("Â∑≤ÊàêÂäü‰øùÂ≠ò");
             SavePlayerData();
             SaveToLoadPlayer();
         }
-
-        
     }
-    
+
     public void SavePlayerData()
     {
-        Save(GameManager.Instance.playerStats.characterData,GameManager.Instance.playerStats.characterData.name);
+        CharacterData_SO playerData = ResolvePlayerCharacterData();
+        if (playerData == null)
+        {
+            return;
+        }
+
+        Save(playerData, playerData.name);
     }
+
     public void SaveToLoadPlayer()
     {
-        SaveToLoad(GameManager.Instance.playerStats.characterData, GameManager.Instance.playerStats.characterData.name);
+        CharacterData_SO playerData = ResolvePlayerCharacterData();
+        if (playerData == null)
+        {
+            return;
+        }
+
+        SaveToLoad(playerData, playerData.name);
         SavePlayerPosition();
     }
-    
+
     public void LoadPlayerData()
     {
-        Load(GameManager.Instance.playerStats.characterData,GameManager.Instance.playerStats.characterData.name);
-    }
-    
-    public void Save(Object data,string key)
-    {
-        var jsonData = JsonUtility.ToJson(data,true);
-        PlayerPrefs.SetString(key,jsonData);
-        PlayerPrefs.SetString(sceneName,SceneManager.GetActiveScene().name);
+        CharacterData_SO playerData = ResolvePlayerCharacterData();
+        if (playerData == null)
+        {
+            return;
+        }
 
+        Load(playerData, playerData.name);
+    }
+
+    public void Save(Object data, string key)
+    {
+        var jsonData = JsonUtility.ToJson(data, true);
+        PlayerPrefs.SetString(key, jsonData);
+        PlayerPrefs.SetString(sceneName, SceneManager.GetActiveScene().name);
         PlayerPrefs.Save();
     }
 
@@ -61,12 +77,10 @@ public class SaveManager : Singleton<SaveManager>
         var jsonData = JsonUtility.ToJson(data, true);
         PlayerPrefs.SetString(key, jsonData);
         PlayerPrefs.SetString(sceneName, SceneManager.GetActiveScene().name);
-
         PlayerPrefs.Save();
     }
 
-
-    public void Load(Object data,string key)
+    public void Load(Object data, string key)
     {
         string scene = PlayerPrefs.GetString(sceneName);
         if (PlayerPrefs.HasKey(key))
@@ -83,9 +97,16 @@ public class SaveManager : Singleton<SaveManager>
             }
         }
     }
+
     public void SavePlayerPosition()
     {
-        Vector3 playerPosition = GameManager.Instance.playerStats.transform.position;
+        Transform playerTransform = ResolvePlayerTransform();
+        if (playerTransform == null)
+        {
+            return;
+        }
+
+        Vector3 playerPosition = playerTransform.position;
         string playerPositionJson = JsonUtility.ToJson(playerPosition);
         PlayerPrefs.SetString("PlayerPosition", playerPositionJson);
         PlayerPrefs.Save();
@@ -97,7 +118,31 @@ public class SaveManager : Singleton<SaveManager>
         {
             string playerPositionJson = PlayerPrefs.GetString("PlayerPosition");
             Vector3 playerPosition = JsonUtility.FromJson<Vector3>(playerPositionJson);
-            GameManager.Instance.playerStats.transform.position = playerPosition;
+            Transform playerTransform = ResolvePlayerTransform();
+            if (playerTransform != null)
+            {
+                playerTransform.position = playerPosition;
+            }
         }
+    }
+
+    private CharacterData_SO ResolvePlayerCharacterData()
+    {
+        if (GameManager.Instance == null)
+        {
+            return null;
+        }
+
+        return GameManager.Instance.PlayerCharacterData;
+    }
+
+    private Transform ResolvePlayerTransform()
+    {
+        if (GameManager.Instance == null)
+        {
+            return null;
+        }
+
+        return GameManager.Instance.PlayerTransform;
     }
 }

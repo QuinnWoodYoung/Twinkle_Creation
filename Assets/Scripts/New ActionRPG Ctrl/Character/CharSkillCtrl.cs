@@ -12,23 +12,25 @@ public class CharSkillCtrl : MonoBehaviour
     /// 当前角色拥有的技能列表。
     /// 顺序与技能输入槽位对应。
     /// </summary>
-    [Header("Skill List")]
+    [Header("技能列表")]
+    [Tooltip("角色当前拥有的技能槽。索引顺序必须与输入槽顺序一致。")]
     public List<SkillData> skills = new List<SkillData>();
 
     /// <summary>
     /// 用于目标采集的 Layer。
-    /// groundLayer 识别地面，unitLayer 识别可被技能选中的单位。
+    /// groundLayer 只用于地面点选，单位识别已经不再依赖单位 Layer。
     /// </summary>
-    [Header("Targeting Layers")]
+    [Header("选目标层")]
+    [Tooltip("地面选目标使用的 LayerMask。")]
     public LayerMask groundLayer;
-    public LayerMask unitLayer;
 
     /// <summary>
     /// 每个技能槽位剩余冷却时间。
     /// </summary>
     private readonly List<float> _skillCooldowns = new List<float>();
     private CharCtrl _charCtrl;
-    private StateManager _stateManager;
+    private CharActionCtrl _actionCtrl;
+    private CharBlackBoard _blackBoard;
     private bool _hasPendingCast;
     private int _pendingSkillIndex = -1;
     private SkillData _pendingSkill;
@@ -37,7 +39,8 @@ public class CharSkillCtrl : MonoBehaviour
     private void Awake()
     {
         _charCtrl = GetComponent<CharCtrl>();
-        _stateManager = GetComponent<StateManager>();
+        _actionCtrl = GetComponent<CharActionCtrl>();
+        _blackBoard = GetComponent<CharBlackBoard>();
 
         if (_charCtrl == null || _charCtrl.Param == null)
         {
@@ -52,6 +55,8 @@ public class CharSkillCtrl : MonoBehaviour
             _charCtrl.Param.SkillInputDown.Add(false);
             _skillCooldowns.Add(0f);
         }
+
+        SyncBlackBoardSkillData();
     }
 
     private void Update()
@@ -65,6 +70,7 @@ public class CharSkillCtrl : MonoBehaviour
         }
 
         ProcessSkillInputs();
+        SyncBlackBoardSkillData();
     }
 
     private void LateUpdate()
@@ -104,7 +110,7 @@ public class CharSkillCtrl : MonoBehaviour
     /// </summary>
     public void TryCastSkill(int skillIndex)
     {
-        if (_stateManager != null && !_stateManager.CanCastSkills)
+        if (!CanCastByState())
         {
             return;
         }
@@ -125,7 +131,7 @@ public class CharSkillCtrl : MonoBehaviour
             return;
         }
 
-        TargetInfo info = TargetingUtil.Collect(_charCtrl, groundLayer, unitLayer);
+        TargetInfo info = TargetingUtil.Collect(_charCtrl, groundLayer);
         CastContext context = new CastContext(gameObject, info);
 
         if (!currentSkill.CanActivate(context))
@@ -134,6 +140,11 @@ public class CharSkillCtrl : MonoBehaviour
         }
 
         if (currentSkill.requireFacingBeforeCast && TryBeginPendingCast(skillIndex, currentSkill, context))
+        {
+            return;
+        }
+
+        if (!TryStartCastAnim(currentSkill))
         {
             return;
         }
@@ -149,12 +160,31 @@ public class CharSkillCtrl : MonoBehaviour
             return false;
         }
 
-        _hasPendingCast = true;
-        _pendingSkillIndex = skillIndex;
-        _pendingSkill = skill;
-        _pendingContext = context;
+        if (_actionCtrl != null)
+        {
+            // 当前俯视角 ARPG 版本还没有做完整施法阶段图。
+            // 这里只先保留一个“先转向再施法”的动作入口。
+            CharActionReq req = new CharActionReq
+            {
+                type = CharActionType.Cast,
+                state = CharActionState.CastPoint,
+                src = skill,
+                dur = Mathf.Max(0f, skill.castAnimDur),
+                lockMove = skill.lockMovementDuringFacing || skill.lockMoveOnCastAnim,
+                lockRotate = skill.lockRotateOnCastAnim,
+                interruptible = true,
+                animKey = skill.GetCastAnimKey(),
+                waitFace = true,
+                faceDir = facingDirection,
+                faceTol = skill.castFacingAngleTolerance,
+            };
 
-        if (_charCtrl != null)
+            if (!_actionCtrl.TryStart(req))
+            {
+                return false;
+            }
+        }
+        else if (_charCtrl != null)
         {
             if (skill.lockMovementDuringFacing)
             {
@@ -163,6 +193,12 @@ public class CharSkillCtrl : MonoBehaviour
 
             _charCtrl.BeginSkillFacing(facingDirection);
         }
+
+        _hasPendingCast = true;
+        _pendingSkillIndex = skillIndex;
+        _pendingSkill = skill;
+        _pendingContext = context;
+        SyncBlackBoardSkillData();
 
         return true;
     }
@@ -174,7 +210,13 @@ public class CharSkillCtrl : MonoBehaviour
             return;
         }
 
-        if (_stateManager != null && !_stateManager.CanCastSkills)
+        if (!CanCastByState())
+        {
+            ClearPendingCast();
+            return;
+        }
+
+        if (_actionCtrl != null && _actionCtrl.CurReq == null)
         {
             ClearPendingCast();
             return;
@@ -183,6 +225,18 @@ public class CharSkillCtrl : MonoBehaviour
         Vector3 facingDirection = GetCastFacingDirection(_pendingContext);
         if (facingDirection.sqrMagnitude < 0.001f)
         {
+            ExecutePendingCast();
+            return;
+        }
+
+        if (_actionCtrl != null)
+        {
+            if (_actionCtrl.IsWaitingFace())
+            {
+                return;
+            }
+
+            // 转向完成后，立刻继续原本的技能释放逻辑。
             ExecutePendingCast();
             return;
         }
@@ -206,13 +260,43 @@ public class CharSkillCtrl : MonoBehaviour
         SkillData skill = _pendingSkill;
         CastContext context = _pendingContext;
 
-        ClearPendingCast();
+        bool keepCastAction = _actionCtrl != null && _actionCtrl.CurReq != null && _actionCtrl.CurReq.src == skill;
+        ClearPendingCast(!keepCastAction);
         ExecuteSkill(skillIndex, skill, context);
     }
 
-    private void ClearPendingCast()
+    private bool TryStartCastAnim(SkillData skill)
     {
-        if (_charCtrl != null)
+        if (skill == null || _actionCtrl == null)
+        {
+            return true;
+        }
+
+        CharActionReq req = new CharActionReq
+        {
+            type = CharActionType.Cast,
+            state = CharActionState.CastPoint,
+            src = skill,
+            dur = Mathf.Max(0f, skill.castAnimDur),
+            lockMove = skill.lockMoveOnCastAnim,
+            lockRotate = skill.lockRotateOnCastAnim,
+            interruptible = true,
+            animKey = skill.GetCastAnimKey(),
+        };
+
+        return _actionCtrl.TryStart(req);
+    }
+
+    private void ClearPendingCast(bool endCur = true)
+    {
+        if (_actionCtrl != null)
+        {
+            if (endCur)
+            {
+                _actionCtrl.EndCur();
+            }
+        }
+        else if (_charCtrl != null)
         {
             _charCtrl.EndSkillFacing();
             _charCtrl.SetMovementLocked(false);
@@ -222,6 +306,7 @@ public class CharSkillCtrl : MonoBehaviour
         _pendingSkillIndex = -1;
         _pendingSkill = null;
         _pendingContext = null;
+        SyncBlackBoardSkillData();
     }
 
     private void ExecuteSkill(int skillIndex, SkillData skill, CastContext context)
@@ -234,6 +319,7 @@ public class CharSkillCtrl : MonoBehaviour
         if (skill.Activate(context))
         {
             _skillCooldowns[skillIndex] = skill.cooldown;
+            SyncBlackBoardSkillData();
         }
     }
 
@@ -254,5 +340,35 @@ public class CharSkillCtrl : MonoBehaviour
         }
 
         return direction.sqrMagnitude > 0.001f ? direction.normalized : Vector3.zero;
+    }
+
+    private bool CanCastByState()
+    {
+        return CharRuntimeResolver.CanCast(gameObject);
+    }
+
+    private void SyncBlackBoardSkillData()
+    {
+        if (_blackBoard == null || !_blackBoard.Features.useSkills)
+        {
+            return;
+        }
+
+        List<SkillData> skillSlots = _blackBoard.Skills.slots;
+        skillSlots.Clear();
+        for (int i = 0; i < skills.Count; i++)
+        {
+            skillSlots.Add(skills[i]);
+        }
+
+        List<float> cooldowns = _blackBoard.Skills.cooldowns;
+        cooldowns.Clear();
+        for (int i = 0; i < _skillCooldowns.Count; i++)
+        {
+            cooldowns.Add(_skillCooldowns[i]);
+        }
+
+        _blackBoard.Skills.pendingCast = _hasPendingCast;
+        _blackBoard.Skills.pendingSlot = _pendingSkillIndex;
     }
 }

@@ -16,9 +16,14 @@ public class ItemData_SO : ScriptableObject
     public string description = "";
     public bool Stackable;//�Ƿ�ɶѵ�
 
-    [Header("weapon")]
+    [Header("武器")]
+    [Tooltip("装备该武器时，生成到角色手部插槽的模型预制体。")]
     public GameObject weaponPrefab;
+    [Tooltip("装备时复制到 StateManager.attackData 的攻击数据。")]
     public AttackData_SO weaponData;
+    [Tooltip("逻辑武器类型。CharWeaponCtrl 会根据它切动画层，并决定攻击时能否移动。")]
+    public WeaponType weaponType = WeaponType.None;
+    [Tooltip("这个武器模型应挂到哪只手。")]
     public WeaponSlotType weaponSlotType; // 新增的字段
 
     public UsableItemData_SO itemData;

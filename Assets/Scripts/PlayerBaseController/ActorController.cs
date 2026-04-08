@@ -6,7 +6,6 @@ public class ActorController : MonoBehaviour
 {
     public GameObject model;
     public PlayerInput  pi;
-    public StateManager sm;
 
 
     public float playerSpeed = 2.0f;//???????
@@ -27,13 +26,12 @@ public class ActorController : MonoBehaviour
         pi = GetComponent<PlayerInput>();
         anim = model.GetComponent<Animator>();
         rb = GetComponent<Rigidbody>();
-        sm = GetComponent<StateManager>(); //???????????StateManager???
         //Cursor.lockState = CursorLockMode.Locked;//???????
         
     }
     void OnEnable()
     {
-        GameManager.Instance.RigisterPlayer(sm);
+        GameManager.Instance.RigisterPlayer(gameObject);
         Cursor.lockState = CursorLockMode.Locked;//???????
     }
     void Start()
@@ -48,7 +46,7 @@ public class ActorController : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
-        isDead = sm.HitPoint <= 0f;
+        isDead = CharRuntimeResolver.IsDead(gameObject);
         if (isDead == true)
         {
             GameManager.Instance.NotifyObservers();

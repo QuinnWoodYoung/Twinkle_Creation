@@ -13,9 +13,6 @@ MonoBehaviour:
   m_Name: "\u7D22\u654C"
   m_EditorClassIdentifier: 
   radius: 5
-  targetLayers:
-    serializedVersion: 2
-    m_Bits: 256
   effectsToApply:
   - {fileID: 11400000, guid: eb1069903e9954641a5dab0fe3cc147c, type: 2}
   - {fileID: 11400000, guid: 0b86539651e455847befd54c1ecbda0c, type: 2}

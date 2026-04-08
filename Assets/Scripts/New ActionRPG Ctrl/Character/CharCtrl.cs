@@ -1,31 +1,29 @@
-using System.Collections;
+﻿using System.Collections;
 using UnityEngine;
 
-// 用于控制角色状态和动画播放的核心脚本
+// 鐢ㄤ簬鎺у埗瑙掕壊鐘舵€佸拰鍔ㄧ敾鎾斁鐨勬牳蹇冭剼鏈?
 public class CharCtrl : MonoBehaviour
 {
 
-    // 参数容器（玩家输入的信号已传入其中）
+    // 鍙傛暟瀹瑰櫒锛堢帺瀹惰緭鍏ョ殑淇″彿宸蹭紶鍏ュ叾涓級
     [SerializeField] private CharParam _charParam;
     public CharParam Param => _charParam;
-    // ========== MODIFICATION START | 2026年2月4日 ==========
+    // ========== MODIFICATION START | 2026骞?鏈?鏃?==========
     public Transform LockedTarget => _lockedTarget;
-    // ========== MODIFICATION END | 2026年2月4日 ==========
-    // ------------------------- 基础组件 -------------------------
+    // ========== MODIFICATION END | 2026骞?鏈?鏃?==========
+    // ------------------------- 鍩虹缁勪欢 -------------------------
     public Vector3 moveDir;
 
-    private Vector3 LookDir;
- 
     private float _verticalVelocity;
     
     public float moveSpeed = 3f;
     [SerializeField] private float turnSpeedDegrees = 720f;
     
-    // 未完善的冲刺
+    // 鏈畬鍠勭殑鍐插埡
     private float DodgeSpeed = 4f;
     
     private CharAimCtrl _aimCtrl;
-    // 新增：用于存储当前锁定目标
+    // 鏂板锛氱敤浜庡瓨鍌ㄥ綋鍓嶉攣瀹氱洰鏍?
     private Transform _lockedTarget;
     private Vector3 _forcedFaceDirection;
     private float _forcedFaceTimer;
@@ -36,34 +34,41 @@ public class CharCtrl : MonoBehaviour
     private CharacterController _characterController;
     
     
-    // ------------------------- 测试用动画控制 -------------------------
-    private Animator _animator;
-
-    // 测试用动画控制     
-    
-    // ------------------------- 测试用状态控制 -------------------------
-    private StateManager _stateManager;
+    private CharAnimCtrl _animCtrl;
+    private CharStatusCtrl _statusCtrl;
+    private CharStatusVfxCtrl _statusVfxCtrl;
+    private CharActionCtrl _actionCtrl;
+    private CharBlackBoard _blackBoard;
     private bool isDead;
-    // 测试用状态控制    
+    // 娴嬭瘯鐢ㄧ姸鎬佹帶鍒?   
     
     
     void Awake()
     {
         _characterController = GetComponent<CharacterController>();
-        //测试用动画控制相关脚本
-        _animator = GetComponentInChildren<Animator>();
+        _animCtrl = GetComponent<CharAnimCtrl>();
+        if (_animCtrl == null)
+        {
+            _animCtrl = gameObject.AddComponent<CharAnimCtrl>();
+        }
         _aimCtrl = GetComponent<CharAimCtrl>();
-        //测试用动画控制相关脚本
+        //娴嬭瘯鐢ㄥ姩鐢绘帶鍒剁浉鍏宠剼鏈?        
+        //娴嬭瘯鐢ㄧ姸鎬佹帶鍒剁浉鍏宠剼鏈?
+        _statusCtrl = GetComponent<CharStatusCtrl>();
+        _statusVfxCtrl = GetComponent<CharStatusVfxCtrl>();
+        _blackBoard = GetComponent<CharBlackBoard>();
+        if (_statusCtrl != null && _statusVfxCtrl == null)
+        {
+            _statusVfxCtrl = gameObject.AddComponent<CharStatusVfxCtrl>();
+        }
+        _actionCtrl = GetComponent<CharActionCtrl>();
         
-        //测试用状态控制相关脚本
-        _stateManager = GetComponent<StateManager>();
-        
-        //测试用状态控制相关脚本
+        //娴嬭瘯鐢ㄧ姸鎬佹帶鍒剁浉鍏宠剼鏈?
     }
 
     protected void Update()
     {
-        isDead = _stateManager != null && _stateManager.HitPoint <= 0f;
+        isDead = ResolveIsDead();
         OnDeadAnimation();
         
         
@@ -79,28 +84,19 @@ public class CharCtrl : MonoBehaviour
             }
         }
 
-        
+        SyncBlackBoardMotion();
     } 
 
     private void ApplyMove()
     {
-        // ========== MODIFICATION START | 2026年2月4日 ==========
-        // 如果角色处于眩晕状态，则阻止其移动。
-        if (_stateManager != null && !_stateManager.CanMove)
-        {
-            // 可以在这里额外处理一些眩晕时的逻辑，例如打断当前动画
-            // _animator.SetFloat("xVelocity", 0);
-            // _animator.SetFloat("zVelocity", 0);
-            return;
-        }
-        // ========== MODIFICATION END | 2026年2月4日 ==========
-
         moveDir = new Vector3(Param.Locomotion.x, 0, Param.Locomotion.y);
         moveDir = Quaternion.Euler(0, -45f, 0) * moveDir;
         ApplyGravity();
-        
+
         Vector3 frameMove = moveDir * moveSpeed * Time.deltaTime;
-        if (_movementLocked)
+        // 褰撳墠绉诲姩鍚屾椂璇诲彇涓ゅ閿侊細
+        // 1. 鐘舵€佺郴缁熷揩鐓ч噷鐨勯檺鍒?        // 2. 鍔ㄤ綔绯荤粺閲岀殑杩愯鏃堕攣
+        if (!CanMoveByState() || _movementLocked || (_actionCtrl != null && _actionCtrl.IsMoveLocked()))
         {
             frameMove.x = 0f;
             frameMove.z = 0f;
@@ -120,46 +116,38 @@ public class CharCtrl : MonoBehaviour
 
         if (_skillFacingActive)
         {
+            // Skill-facing keeps rotation inside CharCtrl so actions stay lightweight.
             RotateTowardsDirection(_skillFacingDirection);
             return;
         }
-        
+
+        if (!CanRotateByState() || (_actionCtrl != null && _actionCtrl.IsRotateLocked()))
+        {
+            return;
+        }
+
         if (Param.isLock == false || !_lockedTarget)
         {
-            // 创建一个只包含水平方向的向量用于计算朝向，避免角色低头。
             Vector3 lookDirection = new Vector3(moveDir.x, 0f, moveDir.z);
-
-            // 只有在有实际的水平移动时，才进行转向。
-            // (sqrMagnitude 比 magnitude 效率更高)
             if (lookDirection.sqrMagnitude > 0.01f)
             {
-                // 计算目标朝向
                 Quaternion targetRotation = Quaternion.LookRotation(lookDirection);
-
-                // 使用 Slerp 进行平滑的球形插值转向
-                // 10f 是旋转速度，数值越大转得越快，你可以根据手感调整
-                transform.rotation = Quaternion.Slerp(transform.rotation, targetRotation, Time.deltaTime *
-                    10f);
+                transform.rotation = Quaternion.Slerp(transform.rotation, targetRotation, Time.deltaTime * 10f);
             }
         }
-        else
+        else if (_lockedTarget != null)
         {
-            // [锁定状态]：如果存在锁定目标，则朝向目标
-            if (_lockedTarget != null)
-            {
-                // 计算从角色到目标的向量
-                Vector3 lookDirection = _lockedTarget.position - transform.position;
-                lookDirection.y = 0; // 确保只在水平面上旋转
+            Vector3 lookDirection = _lockedTarget.position - transform.position;
+            lookDirection.y = 0f;
 
-                if (lookDirection.sqrMagnitude > 0.01f)
-                {
-                    Quaternion targetRotation = Quaternion.LookRotation(lookDirection);
-                    transform.rotation = Quaternion.Slerp(transform.rotation, targetRotation,Time.deltaTime * 10f);
-                }
+            if (lookDirection.sqrMagnitude > 0.01f)
+            {
+                Quaternion targetRotation = Quaternion.LookRotation(lookDirection);
+                transform.rotation = Quaternion.Slerp(transform.rotation, targetRotation, Time.deltaTime * 10f);
             }
         }
     }
-    
+
     public void ForceFaceDirection(Vector3 direction, float duration)
     {
         direction.y = 0f;
@@ -185,6 +173,8 @@ public class CharCtrl : MonoBehaviour
             return;
         }
 
+        // 杩欐槸涓€涓交閲忚繍琛屾椂鍏ュ彛锛屽綋鍓嶇敤浜庢妧鑳借浆鍚戠瓑寰咃紝
+        // Lightweight runtime facing request used by cast-facing and future forced facing.
         _skillFacingDirection = direction.normalized;
         _skillFacingActive = true;
     }
@@ -245,39 +235,64 @@ public class CharCtrl : MonoBehaviour
         yield return new WaitForSeconds(DodgeTime);
         moveSpeed /= DodgeSpeed;
     }
-    // ------------------------- 测试用动画控制 -------------------------
+    // ------------------------- 娴嬭瘯鐢ㄥ姩鐢绘帶鍒?-------------------------
     private void AnimCtrl()
     {
-        if (_animator == null)
+        if (_animCtrl == null)
         {
             return;
         }
 
-        if (!Param.isLock && _lockedTarget)
-        {
-            float zVelocity = Vector3.Dot(moveDir.normalized,transform.forward);
-            _animator.SetFloat("zVelocity", zVelocity, 0.1f, Time.deltaTime);
-        }
-        else
-        {
-            float xVelocity = Vector3.Dot(moveDir.normalized,transform.right) ;
-            float zVelocity = Vector3.Dot(moveDir.normalized,transform.forward);
-        
-            _animator.SetFloat("xVelocity", xVelocity, 0.1f, Time.deltaTime);
-            _animator.SetFloat("zVelocity", zVelocity, 0.1f, Time.deltaTime);
-        }
+        _animCtrl.SetMove(moveDir, CanMoveByState(), Param.isLock, _lockedTarget);
     }
-    // ------------------------- 测试用动画控制 -------------------------
+    // ------------------------- 娴嬭瘯鐢ㄥ姩鐢绘帶鍒?-------------------------
     
-    // ------------------------- 测试用状态控制 -------------------------
+    // ------------------------- 娴嬭瘯鐢ㄧ姸鎬佹帶鍒?-------------------------
     
-    //控制角色死亡
+    //鎺у埗瑙掕壊姝讳骸
     public void OnDeadAnimation()
     {
-        if (_animator != null)
+        if (_animCtrl != null)
         {
-            _animator.SetBool("dead", isDead);
+            _animCtrl.SetDead(isDead);
         }
     }
-    // ------------------------- 测试用状态控制 -------------------------
+    private bool CanMoveByState()
+    {
+        // Once the blackboard exists, movement should prefer the folded
+        // state stored there instead of recomputing from multiple sources.
+        return CharRuntimeResolver.CanMove(gameObject);
+    }
+
+    private bool CanRotateByState()
+    {
+        return CharRuntimeResolver.CanRotate(gameObject);
+    }
+
+    private void SyncBlackBoardMotion()
+    {
+        if (_blackBoard == null || _charParam == null)
+        {
+            return;
+        }
+
+        _blackBoard.SyncFromScene();
+        _blackBoard.Motion.moveInput = _charParam.Locomotion;
+        _blackBoard.Motion.aimInput = _charParam.AimTarget;
+        _blackBoard.Motion.moveVector = moveDir;
+        _blackBoard.Motion.baseMoveSpeed = moveSpeed;
+        _blackBoard.Motion.baseTurnSpeed = turnSpeedDegrees;
+        _blackBoard.Motion.isMoving = moveDir.sqrMagnitude > 0.001f;
+
+        if (_blackBoard.Features.useTargeting)
+        {
+            _blackBoard.Targeting.lockedTarget = _lockedTarget;
+        }
+    }
+
+    private bool ResolveIsDead()
+    {
+        return CharRuntimeResolver.IsDead(gameObject);
+    }
 }
+

@@ -45,6 +45,14 @@ public static class SkillEffectUtility
         if (casterTeam != null && summonTeam != null)
         {
             summonTeam.side = casterTeam.side;
+            summonTeam.useExplicitTeamId = casterTeam.useExplicitTeamId;
+            summonTeam.teamId = casterTeam.teamId;
+        }
+
+        CharBlackBoard blackBoard = spawnedUnit.GetComponentInParent<CharBlackBoard>();
+        if (blackBoard != null)
+        {
+            blackBoard.SyncFromScene();
         }
     }
 }

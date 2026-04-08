@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
@@ -16,7 +16,9 @@ public class StateManager : MonoBehaviour
     public bool isDead;
 
     [Header("Weapon")]
+    [Tooltip("Right-hand weapon mount.")]
     public Transform rightHandSlot;
+    [Tooltip("Left-hand weapon mount.")]
     public Transform leftHandSlot;
 
     [Header("Statuses")]
@@ -24,16 +26,79 @@ public class StateManager : MonoBehaviour
     private readonly Dictionary<EStatusType, Coroutine> _statusCoroutines = new Dictionary<EStatusType, Coroutine>();
     private int _controlLockCount;
     private int _damageImmuneCount;
+    private CharStatusCtrl _charStatusCtrl;
+    private CharActionCtrl _charActionCtrl;
+    private CharWeaponCtrl _charWeaponCtrl;
+    private CharBlackBoard _blackBoard;
+    private CharBlackBoardInitializer _blackBoardInitializer;
 
-    public bool IsStunned => _activeStatuses.Contains(EStatusType.Stunned);
-    public bool IsRooted => _activeStatuses.Contains(EStatusType.Rooted);
-    public bool IsSilenced => _activeStatuses.Contains(EStatusType.Silenced);
-    public bool IsInvulnerable => _activeStatuses.Contains(EStatusType.Invulnerable) || _damageImmuneCount > 0;
-    public bool CanMove => !IsStunned && !IsRooted && _controlLockCount <= 0;
-    public bool CanCastSkills => !IsStunned && !IsSilenced && _controlLockCount <= 0;
+    [Header("Hit React")]
+    [SerializeField] private bool _breakOnDmg = true;
+    [SerializeField] private bool _useHitReact = true;
+    [SerializeField] private float _hitReactDur = 0.2f;
+    [SerializeField] private bool _hitReactLockMove = true;
+    [SerializeField] private bool _hitReactLockRotate;
+    [SerializeField] private string _hitReactAnimKey = "";
+
+    public bool IsStunned => HasTag(CharStateTag.Stun) || _activeStatuses.Contains(EStatusType.Stunned);
+    public bool IsRooted => HasTag(CharStateTag.Root) || _activeStatuses.Contains(EStatusType.Rooted);
+    public bool IsSilenced => HasTag(CharStateTag.Silence) || _activeStatuses.Contains(EStatusType.Silenced);
+    public bool IsInvulnerable
+    {
+        get
+        {
+            if (_blackBoard != null && _blackBoard.Features.useCombat)
+            {
+                return HasTag(CharStateTag.Invul) || _blackBoard.Combat.damageImmuneCount > 0;
+            }
+
+            return HasTag(CharStateTag.Invul) ||
+                   _activeStatuses.Contains(EStatusType.Invulnerable) ||
+                   _damageImmuneCount > 0;
+        }
+    }
+
+    public bool CanMove
+    {
+        get
+        {
+            if (_blackBoard != null)
+            {
+                return CanMoveByState() && !_blackBoard.Action.isControlLocked;
+            }
+
+            return CanMoveByState() && _controlLockCount <= 0;
+        }
+    }
+
+    public bool CanCastSkills
+    {
+        get
+        {
+            if (_blackBoard != null)
+            {
+                return CanCastByState() && !_blackBoard.Action.isControlLocked;
+            }
+
+            return CanCastByState() && _controlLockCount <= 0;
+        }
+    }
 
     private void Awake()
     {
+        // Disabled StateManager should not continue bootstrapping legacy runtime
+        // data, otherwise it still competes with blackboard-only initialization.
+        if (!enabled)
+        {
+            return;
+        }
+
+        _charStatusCtrl = GetComponent<CharStatusCtrl>();
+        _charActionCtrl = GetComponent<CharActionCtrl>();
+        _charWeaponCtrl = GetComponent<CharWeaponCtrl>();
+        _blackBoard = GetComponent<CharBlackBoard>();
+        _blackBoardInitializer = GetComponent<CharBlackBoardInitializer>();
+
         if (templateData != null)
         {
             characterData = Instantiate(templateData);
@@ -43,23 +108,36 @@ public class StateManager : MonoBehaviour
         {
             baseAttackData = Instantiate(attackData);
         }
+
+        BootstrapBlackBoardRuntime();
+        SyncBlackBoardRuntime();
     }
 
     private void Update()
     {
-        if (HitPoint <= 0f)
-        {
-            isDead = true;
-        }
-        else
+        isDead = ResolveIsDead();
+        if (!isDead && HasHealthData())
         {
             UpdateHP?.Invoke(HitPoint, MaxHitPoint);
         }
+
+        SyncBlackBoardRuntime();
     }
 
     public void ApplyStatus(EStatusType status, float duration)
     {
         if (duration <= 0f)
+        {
+            return;
+        }
+
+        if (_blackBoard != null && !_blackBoard.Features.useStatus)
+        {
+            return;
+        }
+
+        CharStatusCtrl statusCtrl = GetCharStatusCtrl();
+        if (statusCtrl != null && statusCtrl.ApplyStatus(status, duration, gameObject, this))
         {
             return;
         }
@@ -72,10 +150,16 @@ public class StateManager : MonoBehaviour
         }
 
         _statusCoroutines[status] = StartCoroutine(StatusCoroutine(status, duration));
+        SyncBlackBoardRuntime();
     }
 
     public void RemoveStatus(EStatusType status)
     {
+        if (_blackBoard != null && !_blackBoard.Features.useStatus)
+        {
+            return;
+        }
+
         if (_statusCoroutines.TryGetValue(status, out Coroutine runningCoroutine) && runningCoroutine != null)
         {
             StopCoroutine(runningCoroutine);
@@ -83,26 +167,61 @@ public class StateManager : MonoBehaviour
         }
 
         _activeStatuses.Remove(status);
+        SyncBlackBoardRuntime();
     }
 
     public void PushControlLock()
     {
+        if (_blackBoard != null)
+        {
+            _blackBoard.Action.controlLockCount++;
+            _blackBoard.Action.isControlLocked = _blackBoard.Action.controlLockCount > 0;
+            _controlLockCount = _blackBoard.Action.controlLockCount;
+            return;
+        }
+
         _controlLockCount++;
+        SyncBlackBoardRuntime();
     }
 
     public void PopControlLock()
     {
+        if (_blackBoard != null)
+        {
+            _blackBoard.Action.controlLockCount = Mathf.Max(0, _blackBoard.Action.controlLockCount - 1);
+            _blackBoard.Action.isControlLocked = _blackBoard.Action.controlLockCount > 0;
+            _controlLockCount = _blackBoard.Action.controlLockCount;
+            return;
+        }
+
         _controlLockCount = Mathf.Max(0, _controlLockCount - 1);
+        SyncBlackBoardRuntime();
     }
 
     public void PushDamageImmune()
     {
+        if (_blackBoard != null && _blackBoard.Features.useCombat)
+        {
+            _blackBoard.Combat.damageImmuneCount++;
+            _damageImmuneCount = _blackBoard.Combat.damageImmuneCount;
+            return;
+        }
+
         _damageImmuneCount++;
+        SyncBlackBoardRuntime();
     }
 
     public void PopDamageImmune()
     {
+        if (_blackBoard != null && _blackBoard.Features.useCombat)
+        {
+            _blackBoard.Combat.damageImmuneCount = Mathf.Max(0, _blackBoard.Combat.damageImmuneCount - 1);
+            _damageImmuneCount = _blackBoard.Combat.damageImmuneCount;
+            return;
+        }
+
         _damageImmuneCount = Mathf.Max(0, _damageImmuneCount - 1);
+        SyncBlackBoardRuntime();
     }
 
     private IEnumerator StatusCoroutine(EStatusType status, float duration)
@@ -110,18 +229,88 @@ public class StateManager : MonoBehaviour
         yield return new WaitForSeconds(duration);
         _statusCoroutines.Remove(status);
         _activeStatuses.Remove(status);
+        SyncBlackBoardRuntime();
     }
 
     public float MaxHitPoint
     {
-        get => characterData.MaxHitPoint;
-        set => characterData.MaxHitPoint = value;
+        get
+        {
+            if (_blackBoard != null)
+            {
+                return _blackBoard.Features.useResources && _blackBoard.Resources.hasHealth
+                    ? _blackBoard.Resources.maxHp
+                    : 0f;
+            }
+
+            return characterData != null ? characterData.MaxHitPoint : 0f;
+        }
+        set
+        {
+            float finalValue = Mathf.Max(0f, value);
+            if (_blackBoard != null)
+            {
+                if (!_blackBoard.Features.useResources)
+                {
+                    return;
+                }
+
+                _blackBoard.Resources.hasHealth = true;
+                _blackBoard.Resources.maxHp = finalValue;
+                if (_blackBoard.Resources.hp > finalValue)
+                {
+                    _blackBoard.Resources.hp = finalValue;
+                }
+            }
+
+            if (_blackBoard == null && characterData != null)
+            {
+                characterData.MaxHitPoint = finalValue;
+                if (characterData.HitPoint > finalValue)
+                {
+                    characterData.HitPoint = finalValue;
+                }
+            }
+        }
     }
 
     public float HitPoint
     {
-        get => characterData.HitPoint;
-        set => characterData.HitPoint = value;
+        get
+        {
+            if (_blackBoard != null)
+            {
+                return _blackBoard.Features.useResources && _blackBoard.Resources.hasHealth
+                    ? _blackBoard.Resources.hp
+                    : 0f;
+            }
+
+            return characterData != null ? characterData.HitPoint : 0f;
+        }
+        set
+        {
+            float maxHp = MaxHitPoint;
+            float finalValue = maxHp > 0f ? Mathf.Clamp(value, 0f, maxHp) : Mathf.Max(0f, value);
+
+            if (_blackBoard != null)
+            {
+                if (!_blackBoard.Features.useResources)
+                {
+                    return;
+                }
+
+                _blackBoard.Resources.hasHealth = true;
+                _blackBoard.Resources.hp = finalValue;
+                _blackBoard.Action.isDead = finalValue <= 0f;
+            }
+
+            if (_blackBoard == null && characterData != null)
+            {
+                characterData.HitPoint = finalValue;
+            }
+
+            isDead = finalValue <= 0f;
+        }
     }
 
     public void TakeDamage(StateManager attacker, StateManager defender)
@@ -131,9 +320,8 @@ public class StateManager : MonoBehaviour
             return;
         }
 
-        int damage = Mathf.Max(attacker.CurrentDamage(), 0);
-        HitPoint = Mathf.Max(HitPoint - damage, 0);
-        UpdateHP?.Invoke(HitPoint, MaxHitPoint);
+        float damage = attacker != null ? attacker.GetBasicAttackDamage() : 0f;
+        ApplyDamage(damage);
     }
 
     public void TakeDamage(float damageAmount)
@@ -143,48 +331,69 @@ public class StateManager : MonoBehaviour
             return;
         }
 
-        float actualDamage = Mathf.Max(damageAmount, 0f);
-        HitPoint = Mathf.Max(HitPoint - actualDamage, 0f);
-        UpdateHP?.Invoke(HitPoint, MaxHitPoint);
+        ApplyDamage(damageAmount);
     }
 
-    private int CurrentDamage()
+    public float GetBasicAttackDamage()
     {
-        float coreDamage = attackData.minDamage;
-
+        float coreDamage = ResolveBaseAttackDamage();
         if (isCritical)
         {
-            coreDamage = attackData.maxDamage;
+            float criticalDamage = ResolveCriticalAttackDamage();
+            if (criticalDamage > 0f)
+            {
+                coreDamage = criticalDamage;
+            }
+
             Debug.Log("Critical damage: " + coreDamage);
         }
 
-        return (int)coreDamage;
+        return Mathf.Max(coreDamage, 0f);
     }
 
     public void EquipWeapon(ItemData_SO weapon)
     {
-        if (weapon.weaponPrefab != null)
+        if (weapon == null)
         {
-            Instantiate(weapon.weaponPrefab, rightHandSlot);
+            return;
         }
 
-        attackData.ApplyWeaponData(weapon.weaponData);
+        GameObject weaponInstance = null;
+        Transform slot = GetWeaponSlot(weapon.weaponSlotType);
+        if (weapon.weaponPrefab != null && slot != null)
+        {
+            ClearWeaponSlot(slot);
+            weaponInstance = Instantiate(weapon.weaponPrefab, slot);
+        }
+
+        if (attackData != null && weapon.weaponData != null)
+        {
+            attackData.ApplyWeaponData(weapon.weaponData);
+        }
+
+        CharWeaponCtrl weaponCtrl = GetCharWeaponCtrl();
+        weaponCtrl?.SetWeapon(weapon.weaponType);
+        if (weaponInstance != null)
+        {
+            weaponCtrl?.BindWeaponRoot(weaponInstance.transform);
+        }
+
+        SyncBlackBoardRuntime();
     }
 
     public void UnEquipWeapon()
     {
-        if (rightHandSlot != null && rightHandSlot.childCount != 0)
-        {
-            for (int i = 0; i < rightHandSlot.childCount; i++)
-            {
-                Destroy(rightHandSlot.GetChild(i).gameObject);
-            }
-        }
+        GetCharWeaponCtrl()?.ClearWeaponRoot();
+        ClearWeaponSlot(rightHandSlot);
+        ClearWeaponSlot(leftHandSlot);
 
-        if (baseAttackData != null)
+        if (baseAttackData != null && attackData != null)
         {
             attackData.ApplyWeaponData(baseAttackData);
         }
+
+        GetCharWeaponCtrl()?.SetWeapon(WeaponType.None);
+        SyncBlackBoardRuntime();
     }
 
     public void ChangeWeapon(ItemData_SO weapon)
@@ -195,13 +404,311 @@ public class StateManager : MonoBehaviour
 
     public void ApplyHealth(int amount)
     {
-        if (HitPoint + amount <= MaxHitPoint)
+        if (!HasHealthData())
         {
-            HitPoint += amount;
+            return;
         }
-        else
+
+        HitPoint = Mathf.Min(HitPoint + amount, MaxHitPoint);
+        SyncBlackBoardRuntime();
+    }
+
+    private bool HasTag(CharStateTag tag)
+    {
+        if (_blackBoard != null && _blackBoard.Features.useStatus)
         {
-            HitPoint = MaxHitPoint;
+            return (_blackBoard.Status.snapshot.tags & tag) == tag;
         }
+
+        CharStatusCtrl statusCtrl = GetCharStatusCtrl();
+        return statusCtrl != null && statusCtrl.HasTag(tag);
+    }
+
+    private void ApplyDamage(float damageAmount)
+    {
+        if (!HasHealthData())
+        {
+            return;
+        }
+
+        float actualDamage = Mathf.Max(damageAmount, 0f) * GetDamageTakenMultiplier();
+        if (actualDamage <= 0f)
+        {
+            return;
+        }
+
+        CharStatusCtrl statusCtrl = GetCharStatusCtrl();
+        if (_breakOnDmg && statusCtrl != null)
+        {
+            statusCtrl.NotifyBreakByDmg();
+        }
+
+        HitPoint = Mathf.Max(HitPoint - actualDamage, 0f);
+        UpdateHP?.Invoke(HitPoint, MaxHitPoint);
+        SyncBlackBoardRuntime();
+
+        if (HitPoint > 0f)
+        {
+            TryStartHitReact();
+        }
+    }
+
+    private void TryStartHitReact()
+    {
+        if (!_useHitReact || _charActionCtrl == null || _hitReactDur <= 0f)
+        {
+            return;
+        }
+
+        // Keep hit-react lightweight: one request plus an optional animation key.
+        CharActionReq req = new CharActionReq
+        {
+            type = CharActionType.HitReact,
+            state = CharActionState.HitReact,
+            src = this,
+            dur = _hitReactDur,
+            lockMove = _hitReactLockMove,
+            lockRotate = _hitReactLockRotate,
+            interruptible = true,
+            animKey = _hitReactAnimKey,
+        };
+
+        _charActionCtrl.TryStart(req);
+    }
+
+    private bool CanMoveByState()
+    {
+        if (_blackBoard != null && _blackBoard.Features.useStatus)
+        {
+            return _blackBoard.Status.snapshot.canMove;
+        }
+
+        CharStatusCtrl statusCtrl = GetCharStatusCtrl();
+        if (statusCtrl != null)
+        {
+            return statusCtrl.Snap.canMove;
+        }
+
+        return !_activeStatuses.Contains(EStatusType.Stunned) && !_activeStatuses.Contains(EStatusType.Rooted);
+    }
+
+    private bool CanCastByState()
+    {
+        if (_blackBoard != null && _blackBoard.Features.useStatus)
+        {
+            return _blackBoard.Status.snapshot.canCast;
+        }
+
+        CharStatusCtrl statusCtrl = GetCharStatusCtrl();
+        if (statusCtrl != null)
+        {
+            return statusCtrl.Snap.canCast;
+        }
+
+        return !_activeStatuses.Contains(EStatusType.Stunned) && !_activeStatuses.Contains(EStatusType.Silenced);
+    }
+
+    private CharStatusCtrl GetCharStatusCtrl()
+    {
+        if (_charStatusCtrl == null)
+        {
+            _charStatusCtrl = GetComponent<CharStatusCtrl>();
+            if (_charStatusCtrl == null)
+            {
+                _charStatusCtrl = GetComponentInParent<CharStatusCtrl>();
+            }
+        }
+
+        return _charStatusCtrl;
+    }
+
+    private CharWeaponCtrl GetCharWeaponCtrl()
+    {
+        if (_charWeaponCtrl == null)
+        {
+            _charWeaponCtrl = GetComponent<CharWeaponCtrl>();
+        }
+
+        return _charWeaponCtrl;
+    }
+
+    private Transform GetWeaponSlot(WeaponSlotType slotType)
+    {
+        return slotType == WeaponSlotType.LeftHand ? leftHandSlot : rightHandSlot;
+    }
+
+    private void ClearWeaponSlot(Transform slot)
+    {
+        if (slot == null || slot.childCount == 0)
+        {
+            return;
+        }
+
+        for (int i = slot.childCount - 1; i >= 0; i--)
+        {
+            Destroy(slot.GetChild(i).gameObject);
+        }
+    }
+
+    private void SyncBlackBoardRuntime()
+    {
+        if (_blackBoard == null)
+        {
+            return;
+        }
+
+        // Resources now prefer blackboard authority. Legacy scriptable data is kept
+        // in sync so old UI/save code can keep reading the same fields.
+        _blackBoard.SyncFromScene();
+        _controlLockCount = _blackBoard.Action.controlLockCount;
+        if (_blackBoard.Features.useCombat)
+        {
+            _damageImmuneCount = _blackBoard.Combat.damageImmuneCount;
+        }
+
+        if (_blackBoard.Features.useResources && HasHealthData())
+        {
+            _blackBoard.Resources.hasHealth = true;
+            _blackBoard.Resources.hp = HitPoint;
+            _blackBoard.Resources.maxHp = MaxHitPoint;
+
+            if (characterData != null)
+            {
+                characterData.HitPoint = _blackBoard.Resources.hp;
+                characterData.MaxHitPoint = _blackBoard.Resources.maxHp;
+            }
+        }
+
+        if (_blackBoard.Features.useCombat && attackData != null)
+        {
+            _blackBoard.Combat.attackPower = attackData.minDamage;
+            _blackBoard.Combat.criticalAttackPower = attackData.maxDamage;
+            _blackBoard.Combat.attackSpeed = attackData.attackSpeed;
+            _blackBoard.Combat.attackRange = attackData.attackRange;
+            _blackBoard.Combat.maxAttackRange = attackData.maxAttackRange;
+            _blackBoard.Combat.attackCooldown = attackData.coolDown;
+            _blackBoard.Combat.isCritical = isCritical;
+        }
+
+        _blackBoard.Action.controlLockCount = _controlLockCount;
+        _blackBoard.Action.isControlLocked = _controlLockCount > 0;
+        _blackBoard.Action.isDead = ResolveIsDead();
+        _blackBoard.Motion.canMove = CanMove;
+        if (_blackBoard.Features.useCombat)
+        {
+            _blackBoard.Combat.damageImmuneCount = _damageImmuneCount;
+        }
+        if (!_blackBoard.Features.useStatus)
+        {
+            _blackBoard.Motion.canRotate = true;
+        }
+    }
+
+    private bool ResolveIsDead()
+    {
+        if (HasHealthData())
+        {
+            return HitPoint <= 0f;
+        }
+
+        if (_blackBoard != null && _blackBoard.Features.useResources && _blackBoard.Resources.hasHealth)
+        {
+            return _blackBoard.Resources.hp <= 0f;
+        }
+
+        return isDead;
+    }
+
+    private float GetDamageTakenMultiplier()
+    {
+        if (_blackBoard != null && _blackBoard.Features.useCombat)
+        {
+            return Mathf.Max(0f, _blackBoard.Combat.damageTakenMul);
+        }
+
+        CharStatusCtrl statusCtrl = GetCharStatusCtrl();
+        if (statusCtrl != null)
+        {
+            return Mathf.Max(0f, statusCtrl.Snap.dmgTakenMul);
+        }
+
+        return 1f;
+    }
+
+    private void BootstrapBlackBoardRuntime()
+    {
+        if (_blackBoard == null)
+        {
+            return;
+        }
+
+        if (_blackBoardInitializer != null)
+        {
+            _blackBoardInitializer.Initialize(this);
+            return;
+        }
+
+        _blackBoard.SyncFromScene();
+
+        if (_blackBoard.Features.useResources && characterData != null)
+        {
+            _blackBoard.Resources.hasHealth = true;
+            _blackBoard.Resources.maxHp = Mathf.Max(0f, characterData.MaxHitPoint);
+            _blackBoard.Resources.hp = Mathf.Clamp(characterData.HitPoint, 0f, _blackBoard.Resources.maxHp);
+        }
+
+        if (_blackBoard.Features.useCombat && attackData != null)
+        {
+            _blackBoard.Combat.attackPower = attackData.minDamage;
+            _blackBoard.Combat.criticalAttackPower = attackData.maxDamage;
+            _blackBoard.Combat.attackSpeed = attackData.attackSpeed;
+            _blackBoard.Combat.attackRange = attackData.attackRange;
+            _blackBoard.Combat.maxAttackRange = attackData.maxAttackRange;
+            _blackBoard.Combat.attackCooldown = attackData.coolDown;
+            _blackBoard.Combat.isCritical = isCritical;
+        }
+    }
+
+    private bool HasHealthData()
+    {
+        if (_blackBoard != null)
+        {
+            return _blackBoard.Features.useResources && _blackBoard.Resources.hasHealth;
+        }
+
+        return characterData != null;
+    }
+
+    private float ResolveBaseAttackDamage()
+    {
+        if (_blackBoard != null)
+        {
+            return _blackBoard.Features.useCombat ? _blackBoard.Combat.attackPower : 0f;
+        }
+
+        return attackData != null ? attackData.minDamage : 0f;
+    }
+
+    private float ResolveCriticalAttackDamage()
+    {
+        if (_blackBoard != null)
+        {
+            if (!_blackBoard.Features.useCombat)
+            {
+                return 0f;
+            }
+
+            if (_blackBoard.Combat.criticalAttackPower > 0f)
+            {
+                return _blackBoard.Combat.criticalAttackPower;
+            }
+        }
+
+        if (attackData != null)
+        {
+            return attackData.maxDamage;
+        }
+
+        return ResolveBaseAttackDamage();
     }
 }

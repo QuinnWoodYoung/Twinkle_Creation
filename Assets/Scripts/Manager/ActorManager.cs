@@ -1,30 +1,43 @@
-using System.Collections;
-using System.Collections.Generic;
-using UnityEngine;
+﻿using UnityEngine;
 
 public class ActorManager : MonoBehaviour
 {
     public GameObject model;
-    public BattleManager bm;  //����BattleManager
-    public StateManager sm;     //����StateManager
-    
+    public BattleManager bm;  // 兼容旧 sensor 上的 BattleManager
+    public StateManager sm;   // 兼容旧 StateManager，可为空
 
-
-    // Start is called before the first frame update
     void Awake()
     {
-        GameObject sensor = transform.Find("sensor").gameObject;  //�ҵ���ɫ���ص�sensor��ײ�壬����ײ�����ڹ�������
-        bm = sensor.GetComponent<BattleManager>(); //��ȡsensor�Ϲ��ص�BM���
-        bm.am = this; //����������ص���ɫ��BattleManager��ȥ
-        
+        if (model == null)
+        {
+            model = gameObject;
+        }
 
-        sm = GetComponent<StateManager>(); //��ȡ��ɫ���ص�StateManager���
-        sm.am = this;//����������ص���ɫ��BattleManager��ȥ
-        bm.sm = sm;
+        if (sm == null)
+        {
+            sm = GetComponent<StateManager>();
+        }
 
+        Transform sensor = transform.Find("sensor");
+        if (bm == null && sensor != null)
+        {
+            bm = sensor.GetComponent<BattleManager>();
+        }
+
+        if (bm == null)
+        {
+            bm = GetComponentInChildren<BattleManager>();
+        }
+
+        if (bm != null)
+        {
+            bm.am = this;
+            bm.sm = sm;
+        }
+
+        if (sm != null)
+        {
+            sm.am = this;
+        }
     }
-
-    // Update is called once per frame
-
-
 }

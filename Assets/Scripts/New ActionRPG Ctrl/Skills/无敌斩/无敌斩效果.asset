@@ -15,9 +15,6 @@ MonoBehaviour:
   slashCount: 8
   slashInterval: 0.18
   searchRadius: 6
-  targetLayers:
-    serializedVersion: 2
-    m_Bits: 256
   targetTeamRule: 1
   allowRepeatTargetWhenAlone: 1
   avoidImmediateRepeat: 1

@@ -26,6 +26,12 @@ Key runtime flows:
 - `SceneController.TransitionToLoadGame()` loads the scene name restored by `SaveManager`
 - `TransitionPoint` uses trigger presence plus `E` key to call `SceneController.TransitionToDestination(...)`
 
+Player object registration now matters to several systems:
+
+- `GameManager.RigisterPlayer(GameObject)` stores the runtime player as `PlayerUnit`
+- `GameManager.PlayerTransform`, `PlayerState`, and `PlayerCharacterData` are compatibility accessors layered on top of `PlayerUnit`
+- New UI/runtime code should prefer `GameManager.PlayerUnit` instead of searching for `StateManager` directly
+
 ## Manager Lifecycle
 
 These classes call `DontDestroyOnLoad(this)` in `Awake()`:
@@ -54,6 +60,7 @@ Important implications:
 - Player stats and inventory are not persisted by custom files or databases
 - Runtime state depends on ScriptableObject overwrite order
 - Multiple load calls can interact in non-obvious ways during scene initialization
+- Save/load is still not fully blackboard-native; some flows still depend on legacy mirrored data for compatibility
 
 ## Transition Anchors
 
@@ -71,3 +78,4 @@ Scene transitions rely on `TransitionDestination.DestinationTag` values:
 - `SaveManager.SceneName` reads `PlayerPrefs.GetString(sceneName)` where the backing field starts as an empty string, so the saved scene name effectively uses an empty-key entry.
 - `SceneController.LoadLevel(...)` saves player and inventory immediately after instantiating the player in the loaded scene, which can overwrite expectations about initial state.
 - `Main Menu` exists as a scene asset but is not in current build settings.
+- Scene overrides on prefab instances can still create confusing runtime behavior if `Team`, blackboard identity fields, and initializer values disagree.

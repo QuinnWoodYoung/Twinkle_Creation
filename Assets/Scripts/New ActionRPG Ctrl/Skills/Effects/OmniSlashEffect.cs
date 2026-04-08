@@ -19,7 +19,6 @@ public class OmniSlashEffect : SkillEffect
     [Min(1)] public int slashCount = 6;
     [Min(0.01f)] public float slashInterval = 0.2f;
     [Min(0f)] public float searchRadius = 8f;
-    public LayerMask targetLayers;
     public SkillTargetTeamRule targetTeamRule = SkillTargetTeamRule.Enemy;
     public bool allowRepeatTargetWhenAlone = true;
     public bool avoidImmediateRepeat = true;
@@ -66,7 +65,6 @@ public class OmniSlashEffect : SkillEffect
         }
 
         CharCtrl charCtrl = caster.GetComponent<CharCtrl>();
-        StateManager casterState = caster.GetComponent<StateManager>();
         CharacterController cc = caster.GetComponent<CharacterController>();
 
         if (lockMovementDuringSlash && charCtrl != null)
@@ -74,14 +72,14 @@ public class OmniSlashEffect : SkillEffect
             charCtrl.SetMovementLocked(true);
         }
 
-        if (lockControlDuringSlash && casterState != null)
+        if (lockControlDuringSlash)
         {
-            casterState.PushControlLock();
+            CharRuntimeResolver.PushControlLock(caster);
         }
 
-        if (grantDamageImmunity && casterState != null)
+        if (grantDamageImmunity)
         {
-            casterState.PushDamageImmune();
+            CharRuntimeResolver.PushDamageImmune(caster);
         }
 
         try
@@ -127,14 +125,14 @@ public class OmniSlashEffect : SkillEffect
         }
         finally
         {
-            if (grantDamageImmunity && casterState != null)
+            if (grantDamageImmunity)
             {
-                casterState.PopDamageImmune();
+                CharRuntimeResolver.PopDamageImmune(caster);
             }
 
-            if (lockControlDuringSlash && casterState != null)
+            if (lockControlDuringSlash)
             {
-                casterState.PopControlLock();
+                CharRuntimeResolver.PopControlLock(caster);
             }
 
             if (lockMovementDuringSlash && charCtrl != null)
@@ -146,24 +144,17 @@ public class OmniSlashEffect : SkillEffect
 
     private GameObject FindNextTarget(GameObject caster, GameObject previousTarget, Vector3 searchCenter)
     {
-        Collider[] hits = Physics.OverlapSphere(searchCenter, searchRadius, targetLayers);
+        Collider[] hits = Physics.OverlapSphere(searchCenter, searchRadius);
         GameObject bestTarget = null;
         float bestDistance = float.MaxValue;
 
         for (int i = 0; i < hits.Length; i++)
         {
-            StateManager state = hits[i].GetComponent<StateManager>();
-            if (state == null)
-            {
-                state = hits[i].GetComponentInParent<StateManager>();
-            }
-
-            if (state == null)
+            if (!CharRelationResolver.TryResolveUnit(hits[i].gameObject, out GameObject candidate))
             {
                 continue;
             }
 
-            GameObject candidate = state.gameObject;
             if (!IsValidSlashTarget(caster, candidate))
             {
                 continue;

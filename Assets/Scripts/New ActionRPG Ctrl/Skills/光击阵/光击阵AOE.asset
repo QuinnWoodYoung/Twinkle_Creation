@@ -13,9 +13,6 @@ MonoBehaviour:
   m_Name: "\u5149\u51FB\u9635AOE"
   m_EditorClassIdentifier: 
   radius: 3
-  targetLayers:
-    serializedVersion: 2
-    m_Bits: 256
   searchOrigin: 2
   targetTeamRule: 1
   includeCaster: 0

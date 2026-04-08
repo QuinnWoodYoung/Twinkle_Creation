@@ -122,10 +122,19 @@ public class Projectile : MonoBehaviour
             return;
         }
 
-        StateManager sm = other.GetComponentInParent<StateManager>();
-        if (sm != null && _context != null && sm.gameObject != _context.caster)
+        if (_context == null)
         {
-            OnHit(sm.gameObject);
+            return;
+        }
+
+        if (CharRelationResolver.TryResolveUnit(other.gameObject, out GameObject hitUnit) && hitUnit != _context.caster)
+        {
+            if (!CharRelationResolver.IsSkillTargetValid(_context.caster, hitUnit, _context.teamRule))
+            {
+                return;
+            }
+
+            OnHit(hitUnit);
         }
     }
 }

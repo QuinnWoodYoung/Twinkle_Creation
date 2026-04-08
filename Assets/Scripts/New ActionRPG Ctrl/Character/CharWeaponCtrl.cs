@@ -1,125 +1,491 @@
-using UnityEngine;
+﻿using UnityEngine;
 
+[DisallowMultipleComponent]
 public class CharWeaponCtrl : MonoBehaviour
 {
+    // Fired after the logical weapon state is fully synchronized.
+    public event System.Action<WeaponType> WeaponChanged;
+
     private CharCtrl _charCtrl;
-    private Animator _animator;
-    [SerializeField]private Animator _weaponAnimator;
-    
+    private CharAnimCtrl _animCtrl;
+    private WeaponVisualCtrl _weaponVisualCtrl;
+    private CharActionCtrl _actionCtrl;
+    private CharBlackBoard _blackBoard;
+    private WeaponType _lastWeapon = (WeaponType)(-1);
+
+    [SerializeField] private Transform _weaponRoot;
+    [SerializeField] private Animator _weaponAnimator;
+    [SerializeField] private WeaponAnimCtrl _weaponAnimCtrl;
     [SerializeField] public WeaponType _currentWeapon;
-    
-    //——————
-    private bool _attackTrigger;
-    private bool _lastAttackTrigger;
-    //——————
 
-    private float _LerpTarget;  //平滑攻击动画层动画
-    private float _currentWeight;
-    private string LayerName = "Sword";
+    public WeaponType CurWeapon => _currentWeapon;
 
+    [Header("Bow")]
     [SerializeField] private GameObject bulletPrefab;
     [SerializeField] private float bulletSpeed = 10f;
     [SerializeField] private Transform bulletSpawnPoint;
-    
-    
+
+    [Header("Debug")]
+    [SerializeField] private bool _debugWeaponAnim = true;
+
+    [Header("Light Attack")]
+    [SerializeField] private string _lightAtkTrig = "Attack";
+    [SerializeField] private float _lightAtkDur = 0.35f;
+    [SerializeField] private bool _lightAtkLockMove = true;
+    [SerializeField] private bool _lightAtkLockRotate;
+
+    [Header("Heavy Attack")]
+    [SerializeField] private bool _useHeavyAtk;
+    [SerializeField] private string _heavyAtkTrig = "";
+    [SerializeField] private float _heavyAtkThreshold = 0.3f;
+    [SerializeField] private float _heavyAtkDur = 0.55f;
+    [SerializeField] private bool _heavyAtkLockMove = true;
+    [SerializeField] private bool _heavyAtkLockRotate = true;
+
+    [Header("Weapon Animation")]
+    [SerializeField] private bool _autoWeaponCfg = true;
+
     protected void Awake()
     {
         _charCtrl = GetComponent<CharCtrl>();
-        _animator = GetComponentInChildren<Animator>();
-        //_weaponAnimator = GetComponentInChildren<Animator>();
+        _animCtrl = GetComponent<CharAnimCtrl>();
+        _weaponVisualCtrl = GetComponent<WeaponVisualCtrl>();
+        _actionCtrl = GetComponent<CharActionCtrl>();
+        _blackBoard = GetComponent<CharBlackBoard>();
+
+        if (_animCtrl == null)
+        {
+            _animCtrl = gameObject.AddComponent<CharAnimCtrl>();
+        }
+
+        CacheWeaponRoot();
+        CacheWeaponAnimator();
+        CacheWeaponAnimCtrl();
+        SyncWeaponCfg();
     }
-    
+
+    private void Start()
+    {
+        RefreshWeaponAnim();
+        SyncWeaponCfg();
+        SyncBlackBoardWeapon();
+    }
+
+    private void OnEnable()
+    {
+        if (_actionCtrl == null)
+        {
+            _actionCtrl = GetComponent<CharActionCtrl>();
+        }
+
+        if (_actionCtrl != null)
+        {
+            _actionCtrl.ActionStart += OnActionStart;
+        }
+    }
+
+    private void OnDisable()
+    {
+        if (_actionCtrl != null)
+        {
+            _actionCtrl.ActionStart -= OnActionStart;
+        }
+    }
 
     private void Update()
     {
+        if (_lastWeapon != _currentWeapon)
+        {
+            SyncWeaponCfg();
+            NotifyWeaponChanged();
+        }
+
+        UpdateAtkInput_New();
+    }
+
+    private void UpdateAtkInput_New()
+    {
+        if (_charCtrl == null || _charCtrl.Param == null)
+        {
+            return;
+        }
+
         AttackInputState input = _charCtrl.Param.AttackState;
-
-        // 我们在按键松开的这一帧检查输入。
-        if (input.isUp)
+        if (!input.isUp)
         {
-            // 用于区分短按和长按的阈值。你可以调整这个值。
-            const float heavyAttackThreshold = 0.3f;
+            return;
+        }
 
-            if (input.holdDuration < heavyAttackThreshold)
+        if (_useHeavyAtk && input.holdDuration >= _heavyAtkThreshold)
+        {
+            TryHeavyAtk_New();
+            return;
+        }
+
+        TryLightAtk_New();
+    }
+
+    private void OnActionStart(CharActionReq req)
+    {
+        if (req == null || req.type != CharActionType.Atk || req.src != this)
+        {
+            return;
+        }
+
+        // Presentation waits until the action request is really accepted.
+        PlayAtk_New(req.animKey);
+    }
+
+    private void TryLightAtk_New()
+    {
+        bool lockMove = _autoWeaponCfg ? !CanMoveOnAtkByWeapon() : _lightAtkLockMove;
+        if (!TryStartAtk_New(_lightAtkTrig, _lightAtkDur, lockMove, _lightAtkLockRotate))
+        {
+            return;
+        }
+
+        if (_actionCtrl == null)
+        {
+            PlayAtk_New(_lightAtkTrig);
+        }
+    }
+
+    private void TryHeavyAtk_New()
+    {
+        string trig = string.IsNullOrEmpty(_heavyAtkTrig) ? _lightAtkTrig : _heavyAtkTrig;
+        float dur = _heavyAtkDur > 0f ? _heavyAtkDur : _lightAtkDur;
+        bool lockMove = _autoWeaponCfg ? !CanMoveOnAtkByWeapon() : _heavyAtkLockMove;
+        if (!TryStartAtk_New(trig, dur, lockMove, _heavyAtkLockRotate))
+        {
+            return;
+        }
+
+        if (_actionCtrl == null)
+        {
+            PlayAtk_New(trig);
+        }
+    }
+
+    private bool TryStartAtk_New(string animKey, float dur, bool lockMove, bool lockRotate)
+    {
+        if (!CanAtkByState_New())
+        {
+            return false;
+        }
+
+        if (_actionCtrl == null)
+        {
+            return true;
+        }
+
+        CharActionReq req = new CharActionReq
+        {
+            type = CharActionType.Atk,
+            state = CharActionState.AtkWindup,
+            src = this,
+            dur = Mathf.Max(0.01f, dur),
+            lockMove = lockMove,
+            lockRotate = lockRotate,
+            interruptible = true,
+            animKey = animKey,
+        };
+
+        return _actionCtrl.TryStart(req);
+    }
+
+    private bool CanAtkByState_New()
+    {
+        return CharRuntimeResolver.CanAttack(gameObject);
+    }
+
+    private void PlayAtk_New(string trig)
+    {
+        if (_weaponAnimCtrl == null)
+        {
+            RefreshWeaponAnim();
+        }
+
+        if (_weaponAnimCtrl != null)
+        {
+            if (_debugWeaponAnim)
             {
-                // 这是一个“短按”（Tap）。
-                Debug.Log("轻攻击触发! (按键时长: " + input.holdDuration + ")");
-                _animator.SetTrigger("Attack"); // 假设 "Attack" 是轻攻击的触发器。
-                _weaponAnimator.SetTrigger("Attack");
-                if (_currentWeapon == WeaponType.Bow)
+                Debug.Log($"[CharWeaponCtrl] PlayAtk trig={trig} root={_weaponRoot?.name} weaponAnim={_weaponAnimCtrl.name} curWeapon={_currentWeapon}", this);
+            }
+
+            _weaponAnimCtrl.PlayAtk(trig);
+        }
+        else if (_debugWeaponAnim)
+        {
+            Debug.LogWarning($"[CharWeaponCtrl] PlayAtk failed, no WeaponAnimCtrl. root={_weaponRoot?.name} animator={_weaponAnimator?.name} curWeapon={_currentWeapon}", this);
+        }
+
+        if (_currentWeapon == WeaponType.Bow)
+        {
+            Shoot();
+        }
+    }
+
+    public void SetWeapon(WeaponType weaponType)
+    {
+        if (_currentWeapon == weaponType)
+        {
+            return;
+        }
+
+        _currentWeapon = weaponType;
+        SyncWeaponCfg();
+        SyncBlackBoardWeapon();
+        NotifyWeaponChanged();
+    }
+
+    public void BindWeaponRoot(Transform weaponRoot)
+    {
+        _weaponRoot = weaponRoot;
+        _weaponAnimator = null;
+        _weaponAnimCtrl = null;
+
+        CacheWeaponAnimator();
+        CacheWeaponAnimCtrl();
+
+        if (_weaponAnimCtrl != null)
+        {
+            _weaponAnimCtrl.Bind(gameObject, _currentWeapon);
+        }
+
+        if (_debugWeaponAnim)
+        {
+            Debug.Log($"[CharWeaponCtrl] BindWeaponRoot root={_weaponRoot?.name} anim={_weaponAnimator?.name} ctrl={_weaponAnimCtrl?.name} curWeapon={_currentWeapon}", this);
+        }
+
+        SyncBlackBoardWeapon();
+    }
+
+    public void ClearWeaponRoot()
+    {
+        if (_weaponAnimCtrl != null)
+        {
+            _weaponAnimCtrl.Unbind();
+        }
+
+        _weaponRoot = null;
+        _weaponAnimator = null;
+        _weaponAnimCtrl = null;
+        SyncBlackBoardWeapon();
+    }
+
+    public void RefreshWeaponAnim()
+    {
+        CacheWeaponRoot();
+        if (_weaponRoot == null)
+        {
+            _weaponAnimator = null;
+            _weaponAnimCtrl = null;
+            SyncBlackBoardWeapon();
+            return;
+        }
+
+        Animator bodyAnimator = _animCtrl != null ? _animCtrl.BodyAnim : null;
+        Animator[] animators = _weaponRoot.GetComponentsInChildren<Animator>(true);
+        _weaponAnimator = null;
+
+        for (int i = 0; i < animators.Length; i++)
+        {
+            Animator animator = animators[i];
+            if (animator != null && animator != bodyAnimator)
+            {
+                _weaponAnimator = animator;
+                break;
+            }
+        }
+
+        _weaponAnimCtrl = null;
+        CacheWeaponAnimCtrl();
+
+        if (_weaponAnimCtrl != null)
+        {
+            _weaponAnimCtrl.Bind(gameObject, _currentWeapon);
+        }
+
+        if (_debugWeaponAnim)
+        {
+            Debug.Log($"[CharWeaponCtrl] RefreshWeaponAnim root={_weaponRoot?.name} anim={_weaponAnimator?.name} ctrl={_weaponAnimCtrl?.name} curWeapon={_currentWeapon}", this);
+        }
+
+        SyncBlackBoardWeapon();
+    }
+
+    private void SyncWeaponCfg()
+    {
+        _lastWeapon = _currentWeapon;
+
+        if (_autoWeaponCfg)
+        {
+            // Attack keys stay simple; weapon difference is mostly movement and layers.
+            _lightAtkTrig = Weapon.GetAtkAnimName(_currentWeapon);
+            if (!_useHeavyAtk || string.IsNullOrEmpty(_heavyAtkTrig))
+            {
+                _heavyAtkTrig = _lightAtkTrig;
+            }
+        }
+
+        if (_weaponRoot == null)
+        {
+            CacheWeaponRoot();
+        }
+
+        if (_weaponAnimator == null)
+        {
+            CacheWeaponAnimator();
+        }
+
+        if (_weaponAnimCtrl == null)
+        {
+            CacheWeaponAnimCtrl();
+        }
+
+        if (_weaponAnimCtrl != null)
+        {
+            _weaponAnimCtrl.Bind(gameObject, _currentWeapon);
+        }
+
+        SyncBlackBoardWeapon();
+    }
+
+    private bool CanMoveOnAtkByWeapon()
+    {
+        // Current simplified rule: axe attack locks movement, most others do not.
+        return Weapon.CanMoveAtk(_currentWeapon);
+    }
+
+    private void CacheWeaponAnimator()
+    {
+        if (_weaponRoot != null)
+        {
+            Animator[] rootAnimators = _weaponRoot.GetComponentsInChildren<Animator>(true);
+            Animator bodyAnimator = _animCtrl != null ? _animCtrl.BodyAnim : null;
+            for (int i = 0; i < rootAnimators.Length; i++)
+            {
+                Animator animator = rootAnimators[i];
+                if (animator != null && animator != bodyAnimator)
                 {
-                    Shoot();
+                    _weaponAnimator = animator;
+                    return;
                 }
-                //
-            }
-            else
-            {
-                // 这是一个“长按”（Hold）。
-                Debug.Log("重攻击触发! (按键时长: " + input.holdDuration + ")");
-                // 你可以在这里触发你的重攻击动画，例如：
-                // _animator.SetTrigger("HeavyAttack");
             }
         }
 
-        /*
-        // 你也可以使用其他状态来实现不同机制，例如：
-        if (input.isDown)
+        Animator[] animators = GetComponentsInChildren<Animator>(true);
+        Animator ownBodyAnimator = _animCtrl != null ? _animCtrl.BodyAnim : null;
+        for (int i = 0; i < animators.Length; i++)
         {
-            // 瞬间按下时就触发的逻辑，比如举盾。
+            Animator animator = animators[i];
+            if (animator != null && animator != ownBodyAnimator)
+            {
+                _weaponAnimator = animator;
+                return;
+            }
         }
-        if (input.isHeld)
+    }
+
+    private void CacheWeaponAnimCtrl()
+    {
+        if (_weaponAnimCtrl != null)
         {
-            // 按住期间持续触发的逻辑，比如给激光充能。
+            return;
         }
-        */
-        
-        /* --- 旧版 Update 逻辑，留作参考 ---
-        if (_charCtrl.Param.Attack)
+
+        if (_weaponRoot != null)
         {
-            Debug.Log("Triggering Attack!");
-            _animator.SetTrigger("Attack");
-            _charCtrl.Param.Attack = false;  
+            _weaponAnimCtrl = _weaponRoot.GetComponent<WeaponAnimCtrl>();
+            if (_weaponAnimCtrl == null)
+            {
+                _weaponAnimCtrl = _weaponRoot.GetComponentInChildren<WeaponAnimCtrl>(true);
+            }
+
+            if (_weaponAnimCtrl == null)
+            {
+                _weaponAnimCtrl = _weaponRoot.gameObject.AddComponent<WeaponAnimCtrl>();
+            }
+
+            return;
         }
-        */
+
+        if (_weaponAnimator != null)
+        {
+            _weaponAnimCtrl = _weaponAnimator.GetComponent<WeaponAnimCtrl>();
+            if (_weaponAnimCtrl == null)
+            {
+                _weaponAnimCtrl = _weaponAnimator.GetComponentInParent<WeaponAnimCtrl>();
+            }
+
+            return;
+        }
+
+        WeaponAnimCtrl[] ctrls = GetComponentsInChildren<WeaponAnimCtrl>(true);
+        for (int i = 0; i < ctrls.Length; i++)
+        {
+            if (ctrls[i] != null)
+            {
+                _weaponAnimCtrl = ctrls[i];
+                return;
+            }
+        }
+    }
+
+    private void CacheWeaponRoot()
+    {
+        if (_weaponVisualCtrl == null)
+        {
+            _weaponVisualCtrl = GetComponent<WeaponVisualCtrl>();
+        }
+
+        _weaponRoot = CharEquipmentResolver.ResolveWeaponRoot(
+            gameObject,
+            _blackBoard,
+            _weaponVisualCtrl,
+            _animCtrl,
+            _currentWeapon);
+    }
+
+    private void SyncBlackBoardWeapon()
+    {
+        if (_blackBoard == null || !_blackBoard.Features.useEquipment)
+        {
+            return;
+        }
+
+        // Weapon ownership still lives here. The blackboard only mirrors the result.
+        _blackBoard.Equipment.weaponType = _currentWeapon;
+        _blackBoard.Equipment.weaponRoot = _weaponRoot;
+    }
+
+    private void NotifyWeaponChanged()
+    {
+        WeaponChanged?.Invoke(_currentWeapon);
     }
 
     private void Shoot()
     {
-        GameObject newBullet = Instantiate(bulletPrefab, bulletSpawnPoint.position, Quaternion.LookRotation(bulletSpawnPoint.forward));
+        if (bulletPrefab == null || bulletSpawnPoint == null)
+        {
+            return;
+        }
 
-        
-        newBullet.GetComponent<Rigidbody>().velocity = bulletSpawnPoint.forward * bulletSpeed;
-        newBullet.GetComponent<Bullet>().launcher = gameObject;
-        
-        //Destroy(newBullet, 5f);
+        GameObject newBullet = Instantiate(
+            bulletPrefab,
+            bulletSpawnPoint.position,
+            Quaternion.LookRotation(bulletSpawnPoint.forward));
+
+        Rigidbody rb = newBullet.GetComponent<Rigidbody>();
+        if (rb != null)
+        {
+            rb.velocity = bulletSpawnPoint.forward * bulletSpeed;
+        }
+
+        Bullet bullet = newBullet.GetComponent<Bullet>();
+        if (bullet != null)
+        {
+            bullet.launcher = gameObject;
+        }
     }
-
-    
-//     public void OnAttack1hEnter()
-//     {
-//         _LerpTarget = 1.0f;
-//     
-//     }
-//     
-//     public void OnAttack1hAUpdate()
-//     {
-//         _currentWeight = _animator.GetLayerWeight(_animator.GetLayerIndex(LayerName));
-//         _currentWeight = Mathf.Lerp(_currentWeight, _LerpTarget, 0.1f);
-//         _animator.SetLayerWeight(_animator.GetLayerIndex(LayerName),_currentWeight);
-//     }
-//     public void OnAttackIdle()
-//     {
-//         _LerpTarget = 0.0f;
-//         // if (_charCtrl.Param.Attack)// && !_previousAttackState
-//         // {
-//         //     _animator.SetTrigger("Attack");
-//         // }
-//     }
-//     
-//     public void OnAttackIdleUpdate()
-//     {
-//         _currentWeight = _animator.GetLayerWeight(_animator.GetLayerIndex(LayerName));
-//         _currentWeight = Mathf.Lerp(_currentWeight, _LerpTarget, 0.1f);
-//         _animator.SetLayerWeight(_animator.GetLayerIndex(LayerName),_currentWeight);
-//     }
 }

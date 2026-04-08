@@ -1,0 +1,44 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 82cbc9b1da560d84d9e0d37bb91437e1, type: 3}
+  m_Name: Stun_Def
+  m_EditorClassIdentifier: 
+  statusId: stun
+  polarity: 2
+  baseDur: 1
+  maxStack: 1
+  stackMode: 1
+  dispelType: 1
+  exclGroup: ctrl_hard
+  priority: 100
+  breakOnDmg: 0
+  tags: 1
+  restricts: 47
+  immunes: 0
+  mod:
+    moveSpdMul: 1
+    moveSpdAdd: 0
+    atkSpdMul: 1
+    castSpdMul: 1
+    turnSpdMul: 1
+    dmgTakenMul: 1
+  useStatusVfx: 1
+  statusVfxOnAdd: {fileID: 1703367692747339382, guid: 3c7f2d7e4b488bc459945dc2dfdab296, type: 3}
+  statusVfxOnAddLife: 2
+  statusVfxLoop: {fileID: 0}
+  statusVfxOnRemove: {fileID: 0}
+  statusVfxOnRemoveLife: 2
+  statusVfxMount: 2
+  statusVfxFollow: 1
+  statusVfxRefresh: 3
+  statusVfxOffset: {x: 0, y: 0, z: 0}
+  statusVfxEuler: {x: 0, y: 0, z: 0}

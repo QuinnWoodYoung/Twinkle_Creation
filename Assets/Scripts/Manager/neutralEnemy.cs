@@ -1,46 +1,35 @@
-using System.Collections;
+ï»¿using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.AI;
 
-public enum EnemyStates { GUARD,PATROL,CHASE,DEAD }
-
-
+public enum EnemyStates { GUARD, PATROL, CHASE, DEAD }
 
 [RequireComponent(typeof(NavMeshAgent))]
-public class neutralEnemy : MonoBehaviour,IEndGameObserver
+public class neutralEnemy : MonoBehaviour, IEndGameObserver
 {
-    public StateManager sm;     //µ÷ÓÃStateManager
+    public StateManager sm;     // ä»…ä¿ç•™ç»™æ—§é¢„åˆ¶ä½“å¼•ç”¨ï¼Œä¸å†ä½œä¸ºä¸»æ•°æ®æº
     public GameObject model;
     private EnemyStates enemyStates;
-    
-    
+
     private NavMeshAgent agent;
-    
-    private Vector3 thrustVec; //³åÁ¿,±ãÓÚ¸Ä±äÅö×²ÌåÎ»ÖÃ
-    
-    
+    private Vector3 thrustVec; // å†²é‡é¢„ç•™ï¼Œä¿æŒæ—§è„šæœ¬å­—æ®µå…¼å®¹
     private Animator anim;
-    protected StateManager StateManager;
 
     public float sightRadius;
-
     public float LookAtTime;
     private float remainLookAtTime;
     private float lastAttackTime;
 
     public bool isGuard;
 
-
     private float speed;
+    private GameObject attackTarget;
 
-    private GameObject attackTarget; //¹¥»÷Ä¿±ê
-
-    public float patrolRange;//·¶Î§Ñ²Âß
+    public float patrolRange;
     public Vector3 wayPoint;
     public Vector3 guardPos;
 
-    //ÅäºÏ¶¯»­µÄ²¼¶ûÖµ
     bool isWalk;
     bool isChase;
     bool isFollow;
@@ -50,15 +39,19 @@ public class neutralEnemy : MonoBehaviour,IEndGameObserver
 
     void Awake()
     {
-
         agent = GetComponent<NavMeshAgent>();
         anim = GetComponent<Animator>();
-        speed = agent.speed;
+        speed = agent != null ? agent.speed : 0f;
         guardPos = transform.position;
-        StateManager = GetComponent<StateManager>();
+
+        if (sm == null)
+        {
+            sm = GetComponent<StateManager>();
+        }
 
         remainLookAtTime = LookAtTime;
     }
+
     void Start()
     {
         if (isGuard)
@@ -70,25 +63,19 @@ public class neutralEnemy : MonoBehaviour,IEndGameObserver
             enemyStates = EnemyStates.PATROL;
             GetNewWayPoint();
         }
+
         GameManager.Instance.AddObserver(this);
     }
-    /* OnEnable()
-    {
-        GameManager.Instance.RigisterEnemy(sm);
-        SaveManager.Instance.SavePlayerData();
-    }*/
 
     void OnDisable()
     {
         if (!GameManager.IsInitialized) return;
         GameManager.Instance.RemoveObserver(this);
     }
+
     void Update()
     {
-        if(sm.HitPoint == 0)
-        {
-            isDead = true;
-        }
+        isDead = CharRuntimeResolver.IsDead(gameObject);
         if (!playerDead)
         {
             SwitchStates();
@@ -96,48 +83,62 @@ public class neutralEnemy : MonoBehaviour,IEndGameObserver
             lastAttackTime -= Time.deltaTime;
         }
     }
-    void FixedUpdate()
-    {
 
-    }
     void SwitchAnimation()
     {
-        anim.SetBool("isWalk",isWalk);
+        if (anim == null)
+        {
+            return;
+        }
+
+        anim.SetBool("isWalk", isWalk);
         anim.SetBool("isChase", isChase);
         anim.SetBool("isFollow", isFollow);
-        anim.SetBool("isDead",isDead);
-
+        anim.SetBool("isDead", isDead);
     }
+
     void SwitchStates()
     {
+        bool foundTarget = FoundTarget();
+
         if (isDead)
         {
             enemyStates = EnemyStates.DEAD;
         }
-        else if (FoundPlayer())
+        else if (foundTarget)
         {
             enemyStates = EnemyStates.CHASE;
         }
+
         switch (enemyStates)
         {
             case EnemyStates.GUARD:
+                isWalk = false;
+                isChase = false;
+                isFollow = false;
                 break;
+
             case EnemyStates.PATROL:
                 isChase = false;
+                isFollow = false;
+                if (agent == null)
+                {
+                    break;
+                }
+
                 agent.speed = speed * 0.5f;
 
-                if(Vector3.Distance(wayPoint,transform.position) <= agent.stoppingDistance)
+                if (Vector3.Distance(wayPoint, transform.position) <= agent.stoppingDistance)
                 {
                     isWalk = false;
-                    if(remainLookAtTime > 0)//µ½Ëæ»úÑ²ÂßµãºóÍ£Ö¹Ò»»á
+                    if (remainLookAtTime > 0)
                     {
                         remainLookAtTime -= Time.deltaTime;
                     }
                     else
                     {
-                        GetNewWayPoint(); 
+                        GetNewWayPoint();
                     }
-
                 }
                 else
                 {
@@ -145,22 +146,26 @@ public class neutralEnemy : MonoBehaviour,IEndGameObserver
                     agent.destination = wayPoint;
                 }
                 break;
-            case EnemyStates.CHASE:
 
+            case EnemyStates.CHASE:
                 isWalk = false;
                 isChase = true;
+                if (agent == null)
+                {
+                    break;
+                }
 
                 agent.speed = speed;
 
-                if (!FoundPlayer())
+                if (!foundTarget)
                 {
-                    isFollow = false;//À­ÍÑµĞÈË
+                    isFollow = false;
                     if (remainLookAtTime > 0)
                     {
                         agent.destination = transform.position;
                         remainLookAtTime -= Time.deltaTime;
                     }
-                    else if(isGuard)
+                    else if (isGuard)
                     {
                         enemyStates = EnemyStates.GUARD;
                     }
@@ -168,95 +173,132 @@ public class neutralEnemy : MonoBehaviour,IEndGameObserver
                     {
                         enemyStates = EnemyStates.PATROL;
                     }
-
                 }
                 else
                 {
                     isFollow = true;
                     agent.isStopped = false;
-                    agent.destination = attackTarget.transform.position;
+                    agent.destination = attackTarget != null ? attackTarget.transform.position : transform.position;
                 }
 
-                if (TargetInAttackRange() || TargetInSkillRange())
+                if ((TargetInAttackRange() || TargetInSkillRange()) && CharRuntimeResolver.CanAttack(gameObject))
                 {
                     isFollow = false;
                     agent.isStopped = true;
 
-                    if (lastAttackTime < 0)
+                    if (lastAttackTime < 0f)
                     {
-                        lastAttackTime = StateManager.attackData.coolDown;
+                        lastAttackTime = CharResourceResolver.GetAttackCooldown(gameObject);
                         Attack();
                     }
-
                 }
                 break;
-            case EnemyStates.DEAD:
-                agent.enabled = false;
 
-                Destroy(gameObject,2f);
+            case EnemyStates.DEAD:
+                isWalk = false;
+                isChase = false;
+                isFollow = false;
+                if (agent != null && agent.enabled)
+                {
+                    agent.enabled = false;
+                }
+
+                Destroy(gameObject, 2f);
                 break;
         }
     }
 
-    bool FoundPlayer()
+    bool FoundTarget()
     {
-        var colliders = Physics.OverlapSphere(transform.position, sightRadius);
+        Collider[] colliders = Physics.OverlapSphere(transform.position, sightRadius);
+        GameObject bestTarget = null;
+        float bestDistanceSqr = float.MaxValue;
+        HashSet<GameObject> seenUnits = new HashSet<GameObject>();
 
-        foreach (var target in colliders)
+        foreach (Collider target in colliders)
         {
-            if (target.CompareTag("Player"))
+            GameObject targetUnit = CharRelationResolver.NormalizeUnit(target.gameObject);
+            if (targetUnit == null || targetUnit == gameObject)
             {
-                attackTarget = target.gameObject;
-                return true;
+                continue;
             }
+
+            if (!seenUnits.Add(targetUnit))
+            {
+                continue;
+            }
+
+            if (!CharRelationResolver.IsAlive(targetUnit) || !CharRelationResolver.IsEnemy(gameObject, targetUnit))
+            {
+                continue;
+            }
+
+            float distanceSqr = (targetUnit.transform.position - transform.position).sqrMagnitude;
+            if (distanceSqr >= bestDistanceSqr)
+            {
+                continue;
+            }
+
+            bestDistanceSqr = distanceSqr;
+            bestTarget = targetUnit;
         }
-        attackTarget = null;
-        return false;
+
+        attackTarget = bestTarget;
+        return attackTarget != null;
     }
+
     void Attack()
     {
+        if (attackTarget == null || anim == null)
+        {
+            return;
+        }
+
         transform.LookAt(attackTarget.transform);
         if (TargetInAttackRange())
         {
-            //½üÉí¹¥»÷¶¯»­
             anim.SetTrigger("Attack");
         }
+
         if (TargetInSkillRange())
         {
-            //¼¼ÄÜ¹¥»÷¶¯»­
             anim.SetTrigger("Skill");
         }
     }
+
     bool TargetInAttackRange()
     {
-        if (attackTarget != null)
-            return Vector3.Distance(attackTarget.transform.position, transform.position) <= StateManager.attackData.attackRange;
-        else
+        if (attackTarget == null)
+        {
             return false;
+        }
+
+        return Vector3.Distance(attackTarget.transform.position, transform.position) <= CharResourceResolver.GetAttackRange(gameObject);
     }
 
     bool TargetInSkillRange()
     {
-        if (attackTarget != null)
-            return Vector3.Distance(attackTarget.transform.position, transform.position) <= StateManager.attackData.maxAttackRange;
-        else
+        if (attackTarget == null)
+        {
             return false;
+        }
+
+        return Vector3.Distance(attackTarget.transform.position, transform.position) <= CharResourceResolver.GetMaxAttackRange(gameObject);
     }
 
     void GetNewWayPoint()
     {
         remainLookAtTime = LookAtTime;
-        float randomX = Random.Range(-patrolRange,patrolRange);
+        float randomX = Random.Range(-patrolRange, patrolRange);
         float randomZ = Random.Range(-patrolRange, patrolRange);
 
-        Vector3 randomPoint = new Vector3(guardPos.x + randomX, transform.position.y, guardPos.z+ randomZ);
+        Vector3 randomPoint = new Vector3(guardPos.x + randomX, transform.position.y, guardPos.z + randomZ);
 
         NavMeshHit hit;
         wayPoint = NavMesh.SamplePosition(randomPoint, out hit, patrolRange, 1) ? hit.position : transform.position;
     }
 
-
-    void OnDrawGizmosSelected()//¹Û²ì·¶Î§
+    void OnDrawGizmosSelected()
     {
         Gizmos.color = Color.blue;
         Gizmos.DrawWireSphere(transform.position, sightRadius);

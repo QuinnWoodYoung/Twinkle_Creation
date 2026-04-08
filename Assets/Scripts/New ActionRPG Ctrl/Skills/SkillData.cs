@@ -2,6 +2,15 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Serialization;
 
+public enum SkillCastAnimType
+{
+    None,
+    Cast,
+    Shoot,
+    Buff,
+    Dash,
+}
+
 /// <summary>
 /// 技能配置配方。
 /// 一个 SkillData 负责定义施法规则，并按顺序执行 effect 链。
@@ -12,6 +21,16 @@ public class SkillData : ScriptableObject
     public string skillName;
     public string skillDescribe;
     public float cooldown;
+
+    [Header("Cast Anim")]
+    [Tooltip("技能施法动画类别。相同类别的技能共用同一套角色动画。")]
+    public SkillCastAnimType castAnimType = SkillCastAnimType.Cast;
+    [Tooltip("施法动作持续时长。0 表示只触发动画，不额外占用动作时长。")]
+    [Min(0f)] public float castAnimDur = 0f;
+    [Tooltip("施法动作期间是否锁移动。")]
+    public bool lockMoveOnCastAnim = false;
+    [Tooltip("施法动作期间是否锁转向。")]
+    public bool lockRotateOnCastAnim = false;
 
     /// <summary>
     /// 技能施法规则：
@@ -64,11 +83,30 @@ public class SkillData : ScriptableObject
             return false;
         }
 
+        // Effects downstream should inherit the skill's team rule.
+        context.teamRule = targetTeamRule;
         FaceCaster(context);
 
         SkillEffectUtility.ExecuteEffects(effects, context);
 
         return true;
+    }
+
+    public string GetCastAnimKey()
+    {
+        switch (castAnimType)
+        {
+            case SkillCastAnimType.Cast:
+                return "Cast";
+            case SkillCastAnimType.Shoot:
+                return "Shoot";
+            case SkillCastAnimType.Buff:
+                return "Buff";
+            case SkillCastAnimType.Dash:
+                return "Dash";
+            default:
+                return "";
+        }
     }
 
     public bool CanActivate(CastContext context)
