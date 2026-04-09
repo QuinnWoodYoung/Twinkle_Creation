@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -65,7 +66,7 @@ public sealed class CharActionSlice
     public bool isDead;
     public bool isInterrupted;
     public string animKey;
-    public Object source;
+    public UnityEngine.Object source;
 }
 
 [System.Serializable]
@@ -129,12 +130,56 @@ public sealed class CharTargetingSlice
     public Vector3 aimPoint;
 }
 
+[Flags]
+public enum CharBlackBoardChangeMask
+{
+    None = 0,
+    Features = 1 << 0,
+    Identity = 1 << 1,
+    Transform = 1 << 2,
+    Motion = 1 << 3,
+    Action = 1 << 4,
+    Resources = 1 << 5,
+    Combat = 1 << 6,
+    Status = 1 << 7,
+    Skills = 1 << 8,
+    Equipment = 1 << 9,
+    Targeting = 1 << 10,
+    All =
+        Features |
+        Identity |
+        Transform |
+        Motion |
+        Action |
+        Resources |
+        Combat |
+        Status |
+        Skills |
+        Equipment |
+        Targeting,
+}
+
+[Serializable]
+public struct CharBlackBoardSyncStamp
+{
+    public uint revision;
+    public CharBlackBoardChangeMask changeMask;
+    public string runtimeId;
+    public string unitId;
+    public string ownerPlayerId;
+    public string netId;
+}
+
 [DisallowMultipleComponent]
 public class CharBlackBoard : MonoBehaviour
 {
     // CharBlackBoard is the single runtime data source for one character.
     // Systems should prefer reading here instead of caching their own truth.
     private static readonly HashSet<CharBlackBoard> _activeBoards = new HashSet<CharBlackBoard>();
+
+    // Runtime revision is a cheap extension point for future networking, replay,
+    // and UI/event systems that need to know when blackboard data changed.
+    public event Action<CharBlackBoard, CharBlackBoardChangeMask> RuntimeChanged;
 
     [Header("Features")]
     [SerializeField] private CharFeatureSet _features = new CharFeatureSet();
@@ -152,6 +197,8 @@ public class CharBlackBoard : MonoBehaviour
     [SerializeField] private CharSkillSlice _skills = new CharSkillSlice();
     [SerializeField] private CharEquipmentSlice _equipment = new CharEquipmentSlice();
     [SerializeField] private CharTargetingSlice _targeting = new CharTargetingSlice();
+    [SerializeField] private uint _runtimeRevision;
+    [SerializeField] private CharBlackBoardChangeMask _lastChangeMask;
 
     public CharFeatureSet Features => _features;
     public CharIdentitySlice Identity => _identity;
@@ -165,6 +212,8 @@ public class CharBlackBoard : MonoBehaviour
     public CharEquipmentSlice Equipment => _equipment;
     public CharTargetingSlice Targeting => _targeting;
     public static IEnumerable<CharBlackBoard> ActiveBoards => _activeBoards;
+    public uint RuntimeRevision => _runtimeRevision;
+    public CharBlackBoardChangeMask LastChangeMask => _lastChangeMask;
 
     private void Reset()
     {
@@ -196,13 +245,36 @@ public class CharBlackBoard : MonoBehaviour
 
     public void SyncFromScene()
     {
+        CharBlackBoardChangeMask changed = CharBlackBoardChangeMask.None;
+
         // Only sync data that already exists on the scene object itself.
-        _transformState.position = transform.position;
-        _transformState.forward = transform.forward;
+        if (_transformState.position != transform.position)
+        {
+            _transformState.position = transform.position;
+            changed |= CharBlackBoardChangeMask.Transform;
+        }
+
+        if (_transformState.forward != transform.forward)
+        {
+            _transformState.forward = transform.forward;
+            changed |= CharBlackBoardChangeMask.Transform;
+        }
+
         if (_identity.team != null)
         {
-            _identity.teamSide = _identity.team.side;
-            _identity.teamId = _identity.team.EffectiveTeamId;
+            TeamSide newSide = _identity.team.side;
+            int newTeamId = _identity.team.EffectiveTeamId;
+            if (_identity.teamSide != newSide || _identity.teamId != newTeamId)
+            {
+                _identity.teamSide = newSide;
+                _identity.teamId = newTeamId;
+                changed |= CharBlackBoardChangeMask.Identity;
+            }
+        }
+
+        if (changed != CharBlackBoardChangeMask.None)
+        {
+            MarkRuntimeChanged(changed);
         }
     }
 
@@ -259,6 +331,39 @@ public class CharBlackBoard : MonoBehaviour
             _targeting.currentTarget = null;
             _targeting.aimPoint = Vector3.zero;
         }
+
+        MarkRuntimeChanged(
+            CharBlackBoardChangeMask.Motion |
+            CharBlackBoardChangeMask.Action |
+            CharBlackBoardChangeMask.Status |
+            CharBlackBoardChangeMask.Combat |
+            CharBlackBoardChangeMask.Skills |
+            CharBlackBoardChangeMask.Targeting);
+    }
+
+    public void MarkRuntimeChanged(CharBlackBoardChangeMask changeMask)
+    {
+        if (changeMask == CharBlackBoardChangeMask.None)
+        {
+            return;
+        }
+
+        _runtimeRevision++;
+        _lastChangeMask = changeMask;
+        RuntimeChanged?.Invoke(this, changeMask);
+    }
+
+    public CharBlackBoardSyncStamp CaptureSyncStamp(CharBlackBoardChangeMask changeMask = CharBlackBoardChangeMask.All)
+    {
+        return new CharBlackBoardSyncStamp
+        {
+            revision = _runtimeRevision,
+            changeMask = changeMask,
+            runtimeId = _identity.runtimeId,
+            unitId = _identity.unitId,
+            ownerPlayerId = _identity.ownerPlayerId,
+            netId = _identity.netId,
+        };
     }
 
     private void AutoBindIdentity()

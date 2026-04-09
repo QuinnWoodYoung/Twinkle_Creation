@@ -35,6 +35,14 @@ public class CharActionCtrl : MonoBehaviour
         _statusCtrl = GetComponent<CharStatusCtrl>();
         _charCtrl = GetComponent<CharCtrl>();
         _blackBoard = GetComponent<CharBlackBoard>();
+        // CharActionReq 是可序列化引用类型。场景里哪怕只是留下一个默认对象，
+        // 运行时也会被误判成“当前已有动作”，从而把新的攻击/施法全部挡掉。
+        // 因此这里强制把动作控制器重置到纯净的 Idle 起点。
+        _curReq = null;
+        _remain = 0f;
+        _waitFace = false;
+        _started = false;
+        _state = CharActionState.Idle;
         SyncState();
     }
 
@@ -351,5 +359,7 @@ public class CharActionCtrl : MonoBehaviour
         action.isDead = _state == CharActionState.Dead;
         action.animKey = _curReq != null ? _curReq.animKey : null;
         action.source = _curReq != null ? _curReq.src : null;
+
+        _blackBoard.MarkRuntimeChanged(CharBlackBoardChangeMask.Action);
     }
 }

@@ -2001,6 +2001,8 @@ MonoBehaviour:
     lockedTarget: {fileID: 0}
     currentTarget: {fileID: 0}
     aimPoint: {x: 0, y: 0, z: 0}
+  _runtimeRevision: 0
+  _lastChangeMask: 0
 --- !u!114 &499100496
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -3304,83 +3306,6 @@ Transform:
   m_CorrespondingSourceObject: {fileID: -1856687579041112333, guid: 0c4d0fb732ecc584ab9474adf2dfe2d1, type: 3}
   m_PrefabInstance: {fileID: 1282618098}
   m_PrefabAsset: {fileID: 0}
---- !u!1001 &747472570
-PrefabInstance:
-  m_ObjectHideFlags: 0
-  serializedVersion: 2
-  m_Modification:
-    m_TransformParent: {fileID: 885359906}
-    m_Modifications:
-    - target: {fileID: 7170883390641221424, guid: f913198295a9af84f95d87411172b3a6, type: 3}
-      propertyPath: m_RootOrder
-      value: 1
-      objectReference: {fileID: 0}
-    - target: {fileID: 7170883390641221424, guid: f913198295a9af84f95d87411172b3a6, type: 3}
-      propertyPath: m_LocalPosition.x
-      value: -0.027406659
-      objectReference: {fileID: 0}
-    - target: {fileID: 7170883390641221424, guid: f913198295a9af84f95d87411172b3a6, type: 3}
-      propertyPath: m_LocalPosition.y
-      value: 0.003003776
-      objectReference: {fileID: 0}
-    - target: {fileID: 7170883390641221424, guid: f913198295a9af84f95d87411172b3a6, type: 3}
-      propertyPath: m_LocalPosition.z
-      value: 0.0037040017
-      objectReference: {fileID: 0}
-    - target: {fileID: 7170883390641221424, guid: f913198295a9af84f95d87411172b3a6, type: 3}
-      propertyPath: m_LocalRotation.w
-      value: 0.63088495
-      objectReference: {fileID: 0}
-    - target: {fileID: 7170883390641221424, guid: f913198295a9af84f95d87411172b3a6, type: 3}
-      propertyPath: m_LocalRotation.x
-      value: -0.032341175
-      objectReference: {fileID: 0}
-    - target: {fileID: 7170883390641221424, guid: f913198295a9af84f95d87411172b3a6, type: 3}
-      propertyPath: m_LocalRotation.y
-      value: -0.77458334
-      objectReference: {fileID: 0}
-    - target: {fileID: 7170883390641221424, guid: f913198295a9af84f95d87411172b3a6, type: 3}
-      propertyPath: m_LocalRotation.z
-      value: -0.030966014
-      objectReference: {fileID: 0}
-    - target: {fileID: 7170883390641221424, guid: f913198295a9af84f95d87411172b3a6, type: 3}
-      propertyPath: m_LocalEulerAnglesHint.x
-      value: -5.093
-      objectReference: {fileID: 0}
-    - target: {fileID: 7170883390641221424, guid: f913198295a9af84f95d87411172b3a6, type: 3}
-      propertyPath: m_LocalEulerAnglesHint.y
-      value: -101.704
-      objectReference: {fileID: 0}
-    - target: {fileID: 7170883390641221424, guid: f913198295a9af84f95d87411172b3a6, type: 3}
-      propertyPath: m_LocalEulerAnglesHint.z
-      value: 0.634
-      objectReference: {fileID: 0}
-    - target: {fileID: 7552475964292953482, guid: f913198295a9af84f95d87411172b3a6, type: 3}
-      propertyPath: m_Name
-      value: Bow_Object_Anim_1.0 Variant
-      objectReference: {fileID: 0}
-    - target: {fileID: 8062214564033192772, guid: f913198295a9af84f95d87411172b3a6, type: 3}
-      propertyPath: _owner
-      value: 
-      objectReference: {fileID: 0}
-    - target: {fileID: 8062214564033192772, guid: f913198295a9af84f95d87411172b3a6, type: 3}
-      propertyPath: _atkTrig
-      value: Attack
-      objectReference: {fileID: 0}
-    - target: {fileID: 8062214564033192772, guid: f913198295a9af84f95d87411172b3a6, type: 3}
-      propertyPath: _equipped
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 8062214564033192772, guid: f913198295a9af84f95d87411172b3a6, type: 3}
-      propertyPath: _weaponType
-      value: 2
-      objectReference: {fileID: 0}
-    - target: {fileID: 8062214564033192772, guid: f913198295a9af84f95d87411172b3a6, type: 3}
-      propertyPath: _useEquippedBool
-      value: 0
-      objectReference: {fileID: 0}
-    m_RemovedComponents: []
-  m_SourcePrefab: {fileID: 100100000, guid: f913198295a9af84f95d87411172b3a6, type: 3}
 --- !u!4 &762567426 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 75801545318956980, guid: 0c4d0fb732ecc584ab9474adf2dfe2d1, type: 3}
@@ -4747,8 +4672,8 @@ CanvasRenderer:
   m_CullTransparentMesh: 1
 --- !u!4 &1039807264 stripped
 Transform:
-  m_CorrespondingSourceObject: {fileID: 7170883390641221424, guid: f913198295a9af84f95d87411172b3a6, type: 3}
-  m_PrefabInstance: {fileID: 747472570}
+  m_CorrespondingSourceObject: {fileID: 2774470138209262608, guid: ed9d24a4be36c7e4880714930060b9a4, type: 3}
+  m_PrefabInstance: {fileID: 4973378714973959578}
   m_PrefabAsset: {fileID: 0}
 --- !u!4 &1042257976 stripped
 Transform:
@@ -6872,7 +6797,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!114 &1558222941
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -6984,18 +6909,32 @@ MonoBehaviour:
   bulletPrefab: {fileID: 1666856683633650081, guid: c8b762c540a012b4d80f752cf1adbc37, type: 3}
   bulletSpeed: 10
   bulletSpawnPoint: {fileID: 1048688820}
+  _projectileSpawnPointName: Arrow Create
   _debugWeaponAnim: 1
   _lightAtkTrig: Attack
+  _comboAtkTrig: Attack
+  _meleeRepeatTrig: melee
   _lightAtkDur: 0.35
   _lightAtkLockMove: 1
   _lightAtkLockRotate: 0
-  _useHeavyAtk: 0
-  _heavyAtkTrig: 
-  _heavyAtkThreshold: 0.3
-  _heavyAtkDur: 0.55
-  _heavyAtkLockMove: 1
-  _heavyAtkLockRotate: 1
   _autoWeaponCfg: 1
+  _repeatMeleeAttackWhileHeld: 1
+  _repeatRangedAttackWhileHeld: 1
+  _useMeleeTargetAssist: 1
+  _meleeAssistAngle: 40
+  _meleeRepeatLockMoveFraction: 0.75
+  _useBodyMeleeSpeedParam: 1
+  _meleeRepeatHoldRestartDelay: 0.02
+  _suppressMoveAnimDuringMeleeRepeat: 1
+  _meleeRepeatAimGraceTime: 0.16
+  _suppressMoveAnimDuringMeleeCombo: 1
+  _meleeComboAimGraceTime: 0.16
+  _rangedTargetingMode: 1
+  _preferLockedTarget: 1
+  _rangedAssistAngle: 25
+  _faceAttackDirection: 1
+  _suppressRepeatFaceWhileMoving: 1
+  _attackFaceLockDuration: 0.08
 --- !u!114 &1558222947
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -7032,6 +6971,9 @@ MonoBehaviour:
   moveDir: {x: 0, y: 0, z: 0}
   moveSpeed: 3
   turnSpeedDegrees: 720
+  _basicAttackFaceTurnSpeedDegrees: 2160
+  _forcedFaceToleranceDegrees: 2
+  _dodgeDuration: 0.2
 --- !u!114 &1558222949
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -7221,6 +7163,8 @@ MonoBehaviour:
     lockedTarget: {fileID: 0}
     currentTarget: {fileID: 0}
     aimPoint: {x: 0, y: 0, z: 0}
+  _runtimeRevision: 0
+  _lastChangeMask: 0
 --- !u!114 &1558222955
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -10129,6 +10073,7 @@ GameObject:
   - component: {fileID: 2869916834597007327}
   - component: {fileID: 2869916834597007328}
   - component: {fileID: 2869916834597007318}
+  - component: {fileID: 2869916834597007329}
   m_Layer: 7
   m_Name: Mei
   m_TagString: Player
@@ -10151,22 +10096,36 @@ MonoBehaviour:
   _weaponRoot: {fileID: 0}
   _weaponAnimator: {fileID: 0}
   _weaponAnimCtrl: {fileID: 0}
-  _currentWeapon: 1
-  bulletPrefab: {fileID: 1666856683633650081, guid: c8b762c540a012b4d80f752cf1adbc37, type: 3}
-  bulletSpeed: 10
-  bulletSpawnPoint: {fileID: 1431091988}
+  _currentWeapon: 4
+  bulletPrefab: {fileID: 0}
+  bulletSpeed: 0
+  bulletSpawnPoint: {fileID: 0}
+  _projectileSpawnPointName: Arrow Create
   _debugWeaponAnim: 1
   _lightAtkTrig: Attack
+  _comboAtkTrig: Attack
+  _meleeRepeatTrig: melee
   _lightAtkDur: 0.35
   _lightAtkLockMove: 1
   _lightAtkLockRotate: 0
-  _useHeavyAtk: 1
-  _heavyAtkTrig: Heavy
-  _heavyAtkThreshold: 0.3
-  _heavyAtkDur: 0.55
-  _heavyAtkLockMove: 1
-  _heavyAtkLockRotate: 1
   _autoWeaponCfg: 1
+  _repeatMeleeAttackWhileHeld: 1
+  _repeatRangedAttackWhileHeld: 1
+  _useMeleeTargetAssist: 1
+  _meleeAssistAngle: 40
+  _meleeRepeatLockMoveFraction: 0.75
+  _useBodyMeleeSpeedParam: 1
+  _meleeRepeatHoldRestartDelay: 0.02
+  _suppressMoveAnimDuringMeleeRepeat: 1
+  _meleeRepeatAimGraceTime: 0.16
+  _suppressMoveAnimDuringMeleeCombo: 1
+  _meleeComboAimGraceTime: 0.16
+  _rangedTargetingMode: 1
+  _preferLockedTarget: 1
+  _rangedAssistAngle: 25
+  _faceAttackDirection: 1
+  _suppressRepeatFaceWhileMoving: 1
+  _attackFaceLockDuration: 0.08
 --- !u!114 &2869916834597007310
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -10240,6 +10199,9 @@ MonoBehaviour:
   moveDir: {x: 0, y: 0, z: 0}
   moveSpeed: 3
   turnSpeedDegrees: 1000
+  _basicAttackFaceTurnSpeedDegrees: 2160
+  _forcedFaceToleranceDegrees: 2
+  _dodgeDuration: 0.2
 --- !u!143 &2869916834597007314
 CharacterController:
   m_ObjectHideFlags: 0
@@ -10281,7 +10243,7 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 2869916834597007308}
-  m_Enabled: 0
+  m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 421b00e820692e24daa39ee01f292150, type: 3}
   m_Name: 
@@ -10289,11 +10251,11 @@ MonoBehaviour:
   am: {fileID: 0}
   templateData: {fileID: 11400000, guid: 9358a71fc817356499fda1b46ed38f3f, type: 2}
   characterData: {fileID: 0}
-  attackData: {fileID: 11400000, guid: 8617502469dbd444ea1157d6a97da341, type: 2}
+  attackData: {fileID: 0}
   isCritical: 0
   isDead: 0
-  rightHandSlot: {fileID: 2869916833708276668}
-  leftHandSlot: {fileID: 734202788}
+  rightHandSlot: {fileID: 2104319829}
+  leftHandSlot: {fileID: 2097198080}
   _breakOnDmg: 1
   _useHitReact: 1
   _hitReactDur: 0.2
@@ -10343,10 +10305,10 @@ MonoBehaviour:
   _teamId: -1
   _teamSide: 0
   _hasHealth: 1
-  _resourceTemplate: {fileID: 11400000, guid: 1e5d02b30fe9928488eaaff3e0cbab27, type: 2}
+  _resourceTemplate: {fileID: 0}
   _startHp: -1
   _maxHp: -1
-  _attackTemplate: {fileID: 11400000, guid: 8617502469dbd444ea1157d6a97da341, type: 2}
+  _attackTemplate: {fileID: 0}
   _attackPower: -1
   _criticalAttackPower: -1
   _attackSpeed: -1
@@ -10549,6 +10511,7 @@ MonoBehaviour:
   _buffCastTrig: Buff
   _dashCastTrig: Dash
   _hitTrig: 
+  _meleeRepeatSpeedParam: meleeSpeed
   _autoStatusAnim: 1
   _stunBool: StunState
   _sleepBool: SleepState
@@ -10678,6 +10641,23 @@ MonoBehaviour:
     lockedTarget: {fileID: 0}
     currentTarget: {fileID: 0}
     aimPoint: {x: 0, y: 0, z: 0}
+  _runtimeRevision: 0
+  _lastChangeMask: 0
+--- !u!114 &2869916834597007329
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2869916834597007308}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 83c991da92bbdda44aaf8edf65f94e23, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  _weaponItem: {fileID: 11400000, guid: 4024847d515033f4c9d51a099a1089a2, type: 2}
+  _equipOnStart: 1
+  _equipDelay: 0
 --- !u!1 &2869916834896825082
 GameObject:
   m_ObjectHideFlags: 0
@@ -11708,6 +11688,63 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   slotType: 3
   itemUI: {fileID: 910415158831729289}
+--- !u!1001 &4973378714973959578
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    m_TransformParent: {fileID: 885359906}
+    m_Modifications:
+    - target: {fileID: 2774470138209262608, guid: ed9d24a4be36c7e4880714930060b9a4, type: 3}
+      propertyPath: m_RootOrder
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 2774470138209262608, guid: ed9d24a4be36c7e4880714930060b9a4, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: -0.027406659
+      objectReference: {fileID: 0}
+    - target: {fileID: 2774470138209262608, guid: ed9d24a4be36c7e4880714930060b9a4, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 0.003003776
+      objectReference: {fileID: 0}
+    - target: {fileID: 2774470138209262608, guid: ed9d24a4be36c7e4880714930060b9a4, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 0.0037040017
+      objectReference: {fileID: 0}
+    - target: {fileID: 2774470138209262608, guid: ed9d24a4be36c7e4880714930060b9a4, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 0.63088495
+      objectReference: {fileID: 0}
+    - target: {fileID: 2774470138209262608, guid: ed9d24a4be36c7e4880714930060b9a4, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: -0.032341175
+      objectReference: {fileID: 0}
+    - target: {fileID: 2774470138209262608, guid: ed9d24a4be36c7e4880714930060b9a4, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: -0.77458334
+      objectReference: {fileID: 0}
+    - target: {fileID: 2774470138209262608, guid: ed9d24a4be36c7e4880714930060b9a4, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: -0.030966014
+      objectReference: {fileID: 0}
+    - target: {fileID: 2774470138209262608, guid: ed9d24a4be36c7e4880714930060b9a4, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: -5.093
+      objectReference: {fileID: 0}
+    - target: {fileID: 2774470138209262608, guid: ed9d24a4be36c7e4880714930060b9a4, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: -101.704
+      objectReference: {fileID: 0}
+    - target: {fileID: 2774470138209262608, guid: ed9d24a4be36c7e4880714930060b9a4, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0.634
+      objectReference: {fileID: 0}
+    - target: {fileID: 3299789737636923050, guid: ed9d24a4be36c7e4880714930060b9a4, type: 3}
+      propertyPath: m_Name
+      value: Bow_Object_Anim_1.0 Variant
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+  m_SourcePrefab: {fileID: 100100000, guid: ed9d24a4be36c7e4880714930060b9a4, type: 3}
 --- !u!1 &5611444864523210165
 GameObject:
   m_ObjectHideFlags: 0

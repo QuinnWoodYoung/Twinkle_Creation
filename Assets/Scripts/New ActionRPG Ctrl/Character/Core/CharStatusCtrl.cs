@@ -465,5 +465,17 @@ public class CharStatusCtrl : MonoBehaviour
             _blackBoard.Combat.attackSpeedMul = _snap.atkSpdMul;
             _blackBoard.Combat.damageTakenMul = _snap.dmgTakenMul;
         }
+
+        CharBlackBoardChangeMask changeMask =
+            CharBlackBoardChangeMask.Status |
+            CharBlackBoardChangeMask.Motion |
+            CharBlackBoardChangeMask.Action;
+
+        if (_blackBoard.Features.useCombat)
+        {
+            changeMask |= CharBlackBoardChangeMask.Combat;
+        }
+
+        _blackBoard.MarkRuntimeChanged(changeMask);
     }
 }

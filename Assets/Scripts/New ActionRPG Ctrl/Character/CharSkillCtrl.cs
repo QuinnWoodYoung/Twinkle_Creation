@@ -169,7 +169,7 @@ public class CharSkillCtrl : MonoBehaviour
                 type = CharActionType.Cast,
                 state = CharActionState.CastPoint,
                 src = skill,
-                dur = Mathf.Max(0f, skill.castAnimDur),
+                dur = ResolveCastActionDuration(skill.castAnimDur),
                 lockMove = skill.lockMovementDuringFacing || skill.lockMoveOnCastAnim,
                 lockRotate = skill.lockRotateOnCastAnim,
                 interruptible = true,
@@ -277,7 +277,7 @@ public class CharSkillCtrl : MonoBehaviour
             type = CharActionType.Cast,
             state = CharActionState.CastPoint,
             src = skill,
-            dur = Mathf.Max(0f, skill.castAnimDur),
+            dur = ResolveCastActionDuration(skill.castAnimDur),
             lockMove = skill.lockMoveOnCastAnim,
             lockRotate = skill.lockRotateOnCastAnim,
             interruptible = true,
@@ -347,6 +347,17 @@ public class CharSkillCtrl : MonoBehaviour
         return CharRuntimeResolver.CanCast(gameObject);
     }
 
+    private float ResolveCastActionDuration(float baseDuration)
+    {
+        if (baseDuration <= 0f)
+        {
+            return 0f;
+        }
+
+        float castSpeed = CharRuntimeResolver.GetCastSpeed(gameObject);
+        return Mathf.Max(0f, baseDuration / Mathf.Max(castSpeed, 0.01f));
+    }
+
     private void SyncBlackBoardSkillData()
     {
         if (_blackBoard == null || !_blackBoard.Features.useSkills)
@@ -370,5 +381,6 @@ public class CharSkillCtrl : MonoBehaviour
 
         _blackBoard.Skills.pendingCast = _hasPendingCast;
         _blackBoard.Skills.pendingSlot = _pendingSkillIndex;
+        _blackBoard.MarkRuntimeChanged(CharBlackBoardChangeMask.Skills);
     }
 }

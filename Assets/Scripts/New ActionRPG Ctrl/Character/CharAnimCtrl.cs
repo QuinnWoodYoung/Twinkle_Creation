@@ -24,6 +24,9 @@ public class CharAnimCtrl : MonoBehaviour
     [SerializeField] private string _dashCastTrig = "Dash";
     [SerializeField] private string _hitTrig = "";
 
+    [Header("Attack Params")]
+    [SerializeField] private string _meleeRepeatSpeedParam = "meleeSpeed";
+
     [Header("Status Layer")]
     [SerializeField] private bool _autoStatusAnim = true;
     [SerializeField] private string _stunBool = "StunState";
@@ -62,6 +65,12 @@ public class CharAnimCtrl : MonoBehaviour
             ApplyWeaponState(_weaponCtrl.CurWeapon);
         }
 
+        if (_blackBoard != null)
+        {
+            _blackBoard.RuntimeChanged += OnBlackBoardChanged;
+            PollBlackBoardState();
+        }
+
         if (_statusCtrl != null)
         {
             _statusCtrl.SnapUpd += OnSnapUpd;
@@ -81,6 +90,11 @@ public class CharAnimCtrl : MonoBehaviour
             _weaponCtrl.WeaponChanged -= OnWeaponChanged;
         }
 
+        if (_blackBoard != null)
+        {
+            _blackBoard.RuntimeChanged -= OnBlackBoardChanged;
+        }
+
         if (_statusCtrl != null)
         {
             _statusCtrl.SnapUpd -= OnSnapUpd;
@@ -94,7 +108,7 @@ public class CharAnimCtrl : MonoBehaviour
 
     private void LateUpdate()
     {
-        PollBlackBoardState();
+        // Blackboard events are now the preferred sync path.
     }
 
     public void SetMove(Vector3 moveDir, bool canMove, bool isLock, Transform lockedTarget)
@@ -146,6 +160,18 @@ public class CharAnimCtrl : MonoBehaviour
         SetTriggerSafe(_bodyAnim, finalTrig);
     }
 
+    public bool SetMeleeRepeatSpeed(float speed)
+    {
+        Animator animator = _bodyAnim;
+        if (!HasAnimatorCtrl(animator) || !HasParam(animator, _meleeRepeatSpeedParam, AnimatorControllerParameterType.Float))
+        {
+            return false;
+        }
+
+        animator.SetFloat(_meleeRepeatSpeedParam, Mathf.Max(0.01f, speed));
+        return true;
+    }
+
     public void ApplyWeaponState(WeaponType weaponType)
     {
         if (_autoWeaponLayer)
@@ -190,6 +216,21 @@ public class CharAnimCtrl : MonoBehaviour
     private void OnSnapUpd(CharStateSnap snap)
     {
         ApplyStatusState(snap);
+    }
+
+    private void OnBlackBoardChanged(CharBlackBoard board, CharBlackBoardChangeMask changeMask)
+    {
+        if (board != _blackBoard)
+        {
+            return;
+        }
+
+        if ((changeMask & (CharBlackBoardChangeMask.Action | CharBlackBoardChangeMask.Resources | CharBlackBoardChangeMask.Status | CharBlackBoardChangeMask.Equipment)) == 0)
+        {
+            return;
+        }
+
+        PollBlackBoardState();
     }
 
     private void ApplyWeaponLayer(Animator animator, WeaponType weaponType)

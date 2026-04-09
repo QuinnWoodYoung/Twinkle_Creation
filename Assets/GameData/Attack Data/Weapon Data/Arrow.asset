@@ -10,20 +10,20 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 5e9efd1d7fb43894da34ea085f201203, type: 3}
-  m_Name: PlayerBaseAttackData
+  m_Name: Arrow
   m_EditorClassIdentifier: 
-  attackRange: 15
-  maxAttackRange: 30
-  attackSpeed: 0
-  coolDown: 0
-  attackTime: 0
-  minDamage: 10
-  maxDamage: 15
-  basicAttackMode: 0
+  attackRange: 0
+  maxAttackRange: 0
+  attackSpeed: 1
+  coolDown: 0.5
+  attackTime: 0.5
+  minDamage: 30
+  maxDamage: 35
+  basicAttackMode: 3
   attackAnimKey: Attack
   comboAnimKeys: []
   comboResetTime: 0.6
-  projectilePrefab: {fileID: 0}
+  projectilePrefab: {fileID: 1666856683633650081, guid: c8b762c540a012b4d80f752cf1adbc37, type: 3}
   projectileSpeed: 10
   homingTurnSpeed: 18
   preferLockedTarget: 1

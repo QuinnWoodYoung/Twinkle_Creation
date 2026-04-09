@@ -15,18 +15,24 @@ public class CharCtrl : MonoBehaviour
     public Vector3 moveDir;
 
     private float _verticalVelocity;
+    private float _dodgeTimer;
     
     public float moveSpeed = 3f;
     [SerializeField] private float turnSpeedDegrees = 720f;
+    [SerializeField] private float _basicAttackFaceTurnSpeedDegrees = 2160f;
+    [SerializeField] private float _forcedFaceToleranceDegrees = 2f;
     
     // 鏈畬鍠勭殑鍐插埡
     private float DodgeSpeed = 4f;
+    [SerializeField] private float _dodgeDuration = 0.2f;
     
     private CharAimCtrl _aimCtrl;
     // 鏂板锛氱敤浜庡瓨鍌ㄥ綋鍓嶉攣瀹氱洰鏍?
     private Transform _lockedTarget;
     private Vector3 _forcedFaceDirection;
     private float _forcedFaceTimer;
+    private bool _forcedFaceUntilAligned;
+    private float _forcedFaceTurnSpeedOverride = -1f;
     private bool _movementLocked;
     private bool _skillFacingActive;
     private Vector3 _skillFacingDirection;
@@ -38,6 +44,7 @@ public class CharCtrl : MonoBehaviour
     private CharStatusCtrl _statusCtrl;
     private CharStatusVfxCtrl _statusVfxCtrl;
     private CharActionCtrl _actionCtrl;
+    private CharWeaponCtrl _weaponCtrl;
     private CharBlackBoard _blackBoard;
     private bool isDead;
     // 娴嬭瘯鐢ㄧ姸鎬佹帶鍒?   
@@ -52,6 +59,7 @@ public class CharCtrl : MonoBehaviour
             _animCtrl = gameObject.AddComponent<CharAnimCtrl>();
         }
         _aimCtrl = GetComponent<CharAimCtrl>();
+        _weaponCtrl = GetComponent<CharWeaponCtrl>();
         //娴嬭瘯鐢ㄥ姩鐢绘帶鍒剁浉鍏宠剼鏈?        
         //娴嬭瘯鐢ㄧ姸鎬佹帶鍒剁浉鍏宠剼鏈?
         _statusCtrl = GetComponent<CharStatusCtrl>();
@@ -79,9 +87,18 @@ public class CharCtrl : MonoBehaviour
             AnimCtrl();
             if (_charParam.Dodge)
             {
-                print("Dodge");
                 Dodge();
             }
+        }
+        else if (_blackBoard != null)
+        {
+            _blackBoard.Motion.velocity = Vector3.zero;
+            _blackBoard.Motion.isMoving = false;
+        }
+
+        if (_dodgeTimer > 0f)
+        {
+            _dodgeTimer -= Time.deltaTime;
         }
 
         SyncBlackBoardMotion();
@@ -93,7 +110,10 @@ public class CharCtrl : MonoBehaviour
         moveDir = Quaternion.Euler(0, -45f, 0) * moveDir;
         ApplyGravity();
 
-        Vector3 frameMove = moveDir * moveSpeed * Time.deltaTime;
+        float currentMoveSpeed = ResolveMoveSpeed();
+        Vector3 planarMove = new Vector3(moveDir.x, 0f, moveDir.z);
+        Vector3 frameMove = planarMove * currentMoveSpeed * Time.deltaTime;
+        frameMove.y = moveDir.y * Time.deltaTime;
         // 褰撳墠绉诲姩鍚屾椂璇诲彇涓ゅ閿侊細
         // 1. 鐘舵€佺郴缁熷揩鐓ч噷鐨勯檺鍒?        // 2. 鍔ㄤ綔绯荤粺閲岀殑杩愯鏃堕攣
         if (!CanMoveByState() || _movementLocked || (_actionCtrl != null && _actionCtrl.IsMoveLocked()))
@@ -102,15 +122,27 @@ public class CharCtrl : MonoBehaviour
             frameMove.z = 0f;
         }
 
-        if (frameMove.sqrMagnitude > 0f)
-        {
-            _characterController.Move(frameMove);
-        }
+        Vector3 appliedMove = frameMove;
+        _characterController.Move(frameMove);
 
-        if (_forcedFaceTimer > 0f)
+        if (_forcedFaceTimer > 0f || _forcedFaceUntilAligned)
         {
-            _forcedFaceTimer -= Time.deltaTime;
-            RotateTowardsDirection(_forcedFaceDirection);
+            if (_forcedFaceTimer > 0f)
+            {
+                _forcedFaceTimer -= Time.deltaTime;
+            }
+
+            bool aligned = RotateTowardsDirection(
+                _forcedFaceDirection,
+                _forcedFaceToleranceDegrees,
+                ResolveForcedFaceTurnSpeed());
+            if (aligned && _forcedFaceTimer <= 0f)
+            {
+                _forcedFaceUntilAligned = false;
+                _forcedFaceTurnSpeedOverride = -1f;
+            }
+
+            SyncVelocity(appliedMove);
             return;
         }
 
@@ -118,11 +150,20 @@ public class CharCtrl : MonoBehaviour
         {
             // Skill-facing keeps rotation inside CharCtrl so actions stay lightweight.
             RotateTowardsDirection(_skillFacingDirection);
+            SyncVelocity(appliedMove);
             return;
         }
 
         if (!CanRotateByState() || (_actionCtrl != null && _actionCtrl.IsRotateLocked()))
         {
+            SyncVelocity(appliedMove);
+            return;
+        }
+
+        if (_weaponCtrl != null && _weaponCtrl.TryGetMeleeAttackAimDirection(out Vector3 meleeAimDirection))
+        {
+            RotateBasicAttackTowardsDirection(meleeAimDirection, _forcedFaceToleranceDegrees);
+            SyncVelocity(appliedMove);
             return;
         }
 
@@ -131,8 +172,7 @@ public class CharCtrl : MonoBehaviour
             Vector3 lookDirection = new Vector3(moveDir.x, 0f, moveDir.z);
             if (lookDirection.sqrMagnitude > 0.01f)
             {
-                Quaternion targetRotation = Quaternion.LookRotation(lookDirection);
-                transform.rotation = Quaternion.Slerp(transform.rotation, targetRotation, Time.deltaTime * 10f);
+                RotateTowardsDirection(lookDirection);
             }
         }
         else if (_lockedTarget != null)
@@ -142,13 +182,32 @@ public class CharCtrl : MonoBehaviour
 
             if (lookDirection.sqrMagnitude > 0.01f)
             {
-                Quaternion targetRotation = Quaternion.LookRotation(lookDirection);
-                transform.rotation = Quaternion.Slerp(transform.rotation, targetRotation, Time.deltaTime * 10f);
+                RotateTowardsDirection(lookDirection);
             }
         }
+
+        SyncVelocity(appliedMove);
     }
 
-    public void ForceFaceDirection(Vector3 direction, float duration)
+    public void ForceFaceDirection(Vector3 direction, float duration, bool keepUntilAligned = false)
+    {
+        ApplyForcedFaceRequest(direction, duration, keepUntilAligned, -1f);
+    }
+
+    public void ForceBasicAttackFaceDirection(Vector3 direction, float duration, bool keepUntilAligned = true)
+    {
+        ApplyForcedFaceRequest(
+            direction,
+            duration,
+            keepUntilAligned,
+            Mathf.Max(_basicAttackFaceTurnSpeedDegrees, turnSpeedDegrees));
+    }
+
+    private void ApplyForcedFaceRequest(
+        Vector3 direction,
+        float duration,
+        bool keepUntilAligned,
+        float turnSpeedOverride)
     {
         direction.y = 0f;
         if (direction.sqrMagnitude < 0.001f)
@@ -158,6 +217,8 @@ public class CharCtrl : MonoBehaviour
 
         _forcedFaceDirection = direction.normalized;
         _forcedFaceTimer = Mathf.Max(_forcedFaceTimer, duration);
+        _forcedFaceUntilAligned = _forcedFaceUntilAligned || keepUntilAligned;
+        _forcedFaceTurnSpeedOverride = turnSpeedOverride;
     }
 
     public void SetMovementLocked(bool locked)
@@ -195,7 +256,7 @@ public class CharCtrl : MonoBehaviour
         return Vector3.Angle(transform.forward, direction.normalized) <= toleranceDegrees;
     }
 
-    public bool RotateTowardsDirection(Vector3 direction, float toleranceDegrees = 0f)
+    public bool RotateTowardsDirection(Vector3 direction, float toleranceDegrees = 0f, float turnSpeedOverride = -1f)
     {
         direction.y = 0f;
         if (direction.sqrMagnitude < 0.001f)
@@ -207,9 +268,17 @@ public class CharCtrl : MonoBehaviour
         transform.rotation = Quaternion.RotateTowards(
             transform.rotation,
             targetRotation,
-            turnSpeedDegrees * Time.deltaTime);
+            ResolveTurnSpeed(turnSpeedOverride) * Time.deltaTime);
 
         return Quaternion.Angle(transform.rotation, targetRotation) <= toleranceDegrees;
+    }
+
+    public bool RotateBasicAttackTowardsDirection(Vector3 direction, float toleranceDegrees = 0f)
+    {
+        return RotateTowardsDirection(
+            direction,
+            toleranceDegrees,
+            Mathf.Max(_basicAttackFaceTurnSpeedDegrees, turnSpeedDegrees));
     }
 
     private void ApplyGravity()
@@ -225,15 +294,7 @@ public class CharCtrl : MonoBehaviour
     
     private void Dodge()
     {
-        moveSpeed *= DodgeSpeed;
-        StartCoroutine(EndDodge());
-    }
-
-    private IEnumerator EndDodge()
-    {
-        float DodgeTime = .2f;
-        yield return new WaitForSeconds(DodgeTime);
-        moveSpeed /= DodgeSpeed;
+        _dodgeTimer = Mathf.Max(_dodgeTimer, _dodgeDuration);
     }
     // ------------------------- 娴嬭瘯鐢ㄥ姩鐢绘帶鍒?-------------------------
     private void AnimCtrl()
@@ -243,7 +304,13 @@ public class CharCtrl : MonoBehaviour
             return;
         }
 
-        _animCtrl.SetMove(moveDir, CanMoveByState(), Param.isLock, _lockedTarget);
+        Vector3 planarMove = new Vector3(moveDir.x, 0f, moveDir.z);
+        if (_weaponCtrl != null && _weaponCtrl.ShouldSuppressMoveAnimation())
+        {
+            planarMove = Vector3.zero;
+        }
+
+        _animCtrl.SetMove(planarMove, CanMoveByState(), Param.isLock, _lockedTarget);
     }
     // ------------------------- 娴嬭瘯鐢ㄥ姩鐢绘帶鍒?-------------------------
     
@@ -279,20 +346,67 @@ public class CharCtrl : MonoBehaviour
         _blackBoard.SyncFromScene();
         _blackBoard.Motion.moveInput = _charParam.Locomotion;
         _blackBoard.Motion.aimInput = _charParam.AimTarget;
-        _blackBoard.Motion.moveVector = moveDir;
+        _blackBoard.Motion.moveVector = new Vector3(moveDir.x, 0f, moveDir.z);
         _blackBoard.Motion.baseMoveSpeed = moveSpeed;
         _blackBoard.Motion.baseTurnSpeed = turnSpeedDegrees;
-        _blackBoard.Motion.isMoving = moveDir.sqrMagnitude > 0.001f;
+        _blackBoard.Motion.isMoving = _blackBoard.Motion.moveVector.sqrMagnitude > 0.001f;
 
         if (_blackBoard.Features.useTargeting)
         {
             _blackBoard.Targeting.lockedTarget = _lockedTarget;
         }
+
+        CharBlackBoardChangeMask changeMask = CharBlackBoardChangeMask.Motion;
+        if (_blackBoard.Features.useTargeting)
+        {
+            changeMask |= CharBlackBoardChangeMask.Targeting;
+        }
+
+        _blackBoard.MarkRuntimeChanged(changeMask);
     }
 
     private bool ResolveIsDead()
     {
         return CharRuntimeResolver.IsDead(gameObject);
+    }
+
+    private float ResolveMoveSpeed()
+    {
+        float finalSpeed = CharRuntimeResolver.GetMoveSpeed(gameObject, moveSpeed);
+        if (_dodgeTimer > 0f)
+        {
+            finalSpeed *= Mathf.Max(1f, DodgeSpeed);
+        }
+
+        return Mathf.Max(0f, finalSpeed);
+    }
+
+    private float ResolveTurnSpeed(float turnSpeedOverride = -1f)
+    {
+        if (turnSpeedOverride > 0f)
+        {
+            return turnSpeedOverride;
+        }
+
+        return CharRuntimeResolver.GetTurnSpeed(gameObject, turnSpeedDegrees);
+    }
+
+    private float ResolveForcedFaceTurnSpeed()
+    {
+        return ResolveTurnSpeed(_forcedFaceTurnSpeedOverride);
+    }
+
+    private void SyncVelocity(Vector3 frameMove)
+    {
+        if (_blackBoard == null)
+        {
+            return;
+        }
+
+        Vector3 planarFrameMove = new Vector3(frameMove.x, 0f, frameMove.z);
+        _blackBoard.Motion.velocity = Time.deltaTime > 0f
+            ? planarFrameMove / Time.deltaTime
+            : Vector3.zero;
     }
 }
 

@@ -51,6 +51,11 @@ public class CharStatusVfxCtrl : MonoBehaviour
         _statusCtrl.StatusUpd += OnStatusUpd;
         _statusCtrl.StatusRemove += OnStatusRemove;
 
+        if (_blackBoard != null)
+        {
+            _blackBoard.RuntimeChanged += OnBlackBoardChanged;
+        }
+
         IReadOnlyList<CharStatusRt> list = GetRuntimeList();
         if (list == null)
         {
@@ -76,6 +81,11 @@ public class CharStatusVfxCtrl : MonoBehaviour
             _statusCtrl.StatusRemove -= OnStatusRemove;
         }
 
+        if (_blackBoard != null)
+        {
+            _blackBoard.RuntimeChanged -= OnBlackBoardChanged;
+        }
+
         ClearAll();
     }
 
@@ -87,7 +97,7 @@ public class CharStatusVfxCtrl : MonoBehaviour
 
     private void LateUpdate()
     {
-        SyncFromBlackBoard();
+        // Blackboard events are now the preferred sync path.
     }
 
     private void OnStatusAdd(CharStatusRt rt)
@@ -160,6 +170,21 @@ public class CharStatusVfxCtrl : MonoBehaviour
         }
 
         SpawnOnRemove(rt);
+    }
+
+    private void OnBlackBoardChanged(CharBlackBoard board, CharBlackBoardChangeMask changeMask)
+    {
+        if (board != _blackBoard)
+        {
+            return;
+        }
+
+        if ((changeMask & CharBlackBoardChangeMask.Status) == 0)
+        {
+            return;
+        }
+
+        SyncFromBlackBoard();
     }
 
     private void BindRt(CharStatusRt rt)

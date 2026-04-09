@@ -26,38 +26,57 @@ public class BattleManager : MonoBehaviour
             return;
         }
 
-        if (col.CompareTag("weapon"))
+        if (TryResolveWeaponAttacker(col, out GameObject weaponAttacker))
         {
-            TryReceiveWeaponHit(col);
+            TryReceiveAttack(weaponAttacker);
             return;
         }
 
-        if (col.CompareTag("Projectile"))
+        if (TryResolveProjectileAttacker(col, out GameObject projectileAttacker))
         {
-            TryReceiveProjectileHit(col);
+            TryReceiveAttack(projectileAttacker);
         }
     }
 
-    private void TryReceiveWeaponHit(Collider col)
+    private bool TryResolveWeaponAttacker(Collider col, out GameObject attacker)
     {
+        attacker = null;
         WeaponInfo weaponInfo = col.GetComponent<WeaponInfo>();
         if (weaponInfo == null)
         {
             weaponInfo = col.GetComponentInParent<WeaponInfo>();
         }
 
-        TryReceiveAttack(weaponInfo != null ? weaponInfo.owner : null);
+        if (weaponInfo == null || weaponInfo.owner == null)
+        {
+            return false;
+        }
+
+        attacker = weaponInfo.owner;
+        return true;
     }
 
-    private void TryReceiveProjectileHit(Collider col)
+    private bool TryResolveProjectileAttacker(Collider col, out GameObject attacker)
     {
+        attacker = null;
         Bullet bullet = col.GetComponent<Bullet>();
         if (bullet == null)
         {
             bullet = col.GetComponentInParent<Bullet>();
         }
 
-        TryReceiveAttack(bullet != null ? bullet.launcher : null);
+        if (bullet == null || bullet.launcher == null)
+        {
+            return false;
+        }
+
+        if (!bullet.TryConsumeImpact())
+        {
+            return false;
+        }
+
+        attacker = bullet.launcher;
+        return true;
     }
 
     private void TryReceiveAttack(GameObject attacker)

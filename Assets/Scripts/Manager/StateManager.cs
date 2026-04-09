@@ -104,10 +104,7 @@ public class StateManager : MonoBehaviour
             characterData = Instantiate(templateData);
         }
 
-        if (attackData != null)
-        {
-            baseAttackData = Instantiate(attackData);
-        }
+        EnsureAttackDataRuntime();
 
         BootstrapBlackBoardRuntime();
         SyncBlackBoardRuntime();
@@ -364,7 +361,10 @@ public class StateManager : MonoBehaviour
         {
             ClearWeaponSlot(slot);
             weaponInstance = Instantiate(weapon.weaponPrefab, slot);
+            BindWeaponOwnership(weaponInstance);
         }
+
+        EnsureAttackDataRuntime(weapon != null ? weapon.weaponData : null);
 
         if (attackData != null && weapon.weaponData != null)
         {
@@ -386,6 +386,8 @@ public class StateManager : MonoBehaviour
         GetCharWeaponCtrl()?.ClearWeaponRoot();
         ClearWeaponSlot(rightHandSlot);
         ClearWeaponSlot(leftHandSlot);
+
+        EnsureAttackDataRuntime();
 
         if (baseAttackData != null && attackData != null)
         {
@@ -550,6 +552,35 @@ public class StateManager : MonoBehaviour
         }
     }
 
+    private void BindWeaponOwnership(GameObject weaponInstance)
+    {
+        if (weaponInstance == null)
+        {
+            return;
+        }
+
+        WeaponInfo[] weaponInfos = weaponInstance.GetComponentsInChildren<WeaponInfo>(true);
+        if (weaponInfos == null || weaponInfos.Length == 0)
+        {
+            WeaponInfo rootInfo = weaponInstance.GetComponent<WeaponInfo>();
+            if (rootInfo == null)
+            {
+                rootInfo = weaponInstance.AddComponent<WeaponInfo>();
+            }
+
+            rootInfo.owner = gameObject;
+            return;
+        }
+
+        for (int i = 0; i < weaponInfos.Length; i++)
+        {
+            if (weaponInfos[i] != null)
+            {
+                weaponInfos[i].owner = gameObject;
+            }
+        }
+    }
+
     private void SyncBlackBoardRuntime()
     {
         if (_blackBoard == null)
@@ -602,6 +633,23 @@ public class StateManager : MonoBehaviour
         {
             _blackBoard.Motion.canRotate = true;
         }
+
+        CharBlackBoardChangeMask changeMask =
+            CharBlackBoardChangeMask.Transform |
+            CharBlackBoardChangeMask.Motion |
+            CharBlackBoardChangeMask.Action;
+
+        if (_blackBoard.Features.useResources)
+        {
+            changeMask |= CharBlackBoardChangeMask.Resources;
+        }
+
+        if (_blackBoard.Features.useCombat)
+        {
+            changeMask |= CharBlackBoardChangeMask.Combat;
+        }
+
+        _blackBoard.MarkRuntimeChanged(changeMask);
     }
 
     private bool ResolveIsDead()
@@ -667,6 +715,56 @@ public class StateManager : MonoBehaviour
             _blackBoard.Combat.attackCooldown = attackData.coolDown;
             _blackBoard.Combat.isCritical = isCritical;
         }
+    }
+
+    private void EnsureAttackDataRuntime(AttackData_SO fallbackAttackData = null)
+    {
+        if (attackData == null)
+        {
+            AttackData_SO source = ResolveAttackDataSource(fallbackAttackData);
+            if (source != null)
+            {
+                attackData = Instantiate(source);
+            }
+        }
+
+        if (baseAttackData == null)
+        {
+            AttackData_SO baseSource = ResolveAttackDataSource(null);
+            if (baseSource != null)
+            {
+                baseAttackData = Instantiate(baseSource);
+            }
+            else if (attackData != null)
+            {
+                baseAttackData = Instantiate(attackData);
+            }
+        }
+    }
+
+    private AttackData_SO ResolveAttackDataSource(AttackData_SO fallbackAttackData)
+    {
+        if (attackData != null)
+        {
+            return attackData;
+        }
+
+        if (baseAttackData != null)
+        {
+            return baseAttackData;
+        }
+
+        if (_blackBoardInitializer == null)
+        {
+            _blackBoardInitializer = GetComponent<CharBlackBoardInitializer>();
+        }
+
+        if (_blackBoardInitializer != null && _blackBoardInitializer.AttackTemplate != null)
+        {
+            return _blackBoardInitializer.AttackTemplate;
+        }
+
+        return fallbackAttackData;
     }
 
     private bool HasHealthData()

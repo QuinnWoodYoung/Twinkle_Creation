@@ -83,7 +83,6 @@ public class CharSignalReader : MonoBehaviour
 public class PlayerInputSource : CharSignalReader.ICharCtrlSignal
 {
     private bool _wasAttackPressedLastFrame;
-    private float _holdDuration;
     
     // --- 旧版 GetAttackInput() 使用的变量，留作参考 ---
     private bool _attackTrigger;
@@ -113,18 +112,6 @@ public class PlayerInputSource : CharSignalReader.ICharCtrlSignal
         state.isDown = isPressed && !_wasAttackPressedLastFrame;
         state.isHeld = isPressed;
         state.isUp = !isPressed && _wasAttackPressedLastFrame;
-
-        if (state.isDown)
-        {
-            _holdDuration = 0f;
-        }
-
-        if (state.isHeld)
-        {
-            _holdDuration += Time.deltaTime;
-        }
-
-        state.holdDuration = _holdDuration;
 
         _wasAttackPressedLastFrame = isPressed;
         return state;

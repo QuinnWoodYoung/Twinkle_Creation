@@ -10,17 +10,17 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: d7f39229b65cf1841a22097db0ab44f5, type: 3}
-  m_Name: KingSword
+  m_Name: Bow
   m_EditorClassIdentifier: 
   itemType: 1
-  itemName: 
-  itemIcon: {fileID: 21300000, guid: af50dc4fa7b6d314895d0f8c79adb4a5, type: 3}
+  itemName: Bow
+  itemIcon: {fileID: 0}
   itemCount: 1
-  description: 
+  description: Basic ranged weapon that uses the Arrow attack profile.
   Stackable: 0
-  weaponPrefab: {fileID: 7380388806900661277, guid: ef943580cb8af9e40a93d303f88952fb, type: 3}
-  weaponData: {fileID: 11400000, guid: 8617502469dbd444ea1157d6a97da341, type: 2}
-  weaponType: 1
+  weaponPrefab: {fileID: 3299789737636923050, guid: ed9d24a4be36c7e4880714930060b9a4, type: 3}
+  weaponData: {fileID: 11400000, guid: e92c35b5bf1af324288bb8236f746d51, type: 2}
+  weaponType: 2
   useWeaponAttackProfile: 1
-  weaponSlotType: 0
+  weaponSlotType: 1
   itemData: {fileID: 0}

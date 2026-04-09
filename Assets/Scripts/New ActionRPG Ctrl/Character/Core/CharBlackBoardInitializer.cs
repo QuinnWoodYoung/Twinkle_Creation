@@ -84,6 +84,8 @@ public class CharBlackBoardInitializer : MonoBehaviour
     private CharBlackBoard _blackBoard;
     private bool _initialStatusesApplied;
 
+    public AttackData_SO AttackTemplate => _attackTemplate;
+
     private void Awake()
     {
         StateManager stateManager = GetComponent<StateManager>();
@@ -138,6 +140,13 @@ public class CharBlackBoardInitializer : MonoBehaviour
         ApplyIdentity(stateManager);
         ApplyResources(stateManager);
         ApplyCombat(stateManager);
+
+        _blackBoard.MarkRuntimeChanged(
+            CharBlackBoardChangeMask.Features |
+            CharBlackBoardChangeMask.Identity |
+            CharBlackBoardChangeMask.Resources |
+            CharBlackBoardChangeMask.Action |
+            CharBlackBoardChangeMask.Combat);
     }
 
     private void ApplyFeatures()

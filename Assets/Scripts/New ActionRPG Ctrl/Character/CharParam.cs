@@ -17,7 +17,6 @@ public struct AttackInputState
     /// <summary>在攻击键松开的那一帧为 true。</summary>
     public bool isUp;
     /// <summary>按键被按住了多长时间（秒）。</summary>
-    public float holdDuration;
 }
 
 [Serializable]
