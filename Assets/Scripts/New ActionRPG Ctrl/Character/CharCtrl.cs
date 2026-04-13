@@ -4,7 +4,6 @@ using UnityEngine;
 // 鐢ㄤ簬鎺у埗瑙掕壊鐘舵€佸拰鍔ㄧ敾鎾斁鐨勬牳蹇冭剼鏈?
 public class CharCtrl : MonoBehaviour
 {
-
     // 鍙傛暟瀹瑰櫒锛堢帺瀹惰緭鍏ョ殑淇″彿宸蹭紶鍏ュ叾涓級
     [SerializeField] private CharParam _charParam;
     public CharParam Param => _charParam;
@@ -77,6 +76,7 @@ public class CharCtrl : MonoBehaviour
     protected void Update()
     {
         isDead = ResolveIsDead();
+        SyncDeathState();
         OnDeadAnimation();
         
         
@@ -103,6 +103,22 @@ public class CharCtrl : MonoBehaviour
 
         SyncBlackBoardMotion();
     } 
+
+    private void SyncDeathState()
+    {
+        if (_characterController == null)
+        {
+            return;
+        }
+
+        bool shouldEnableController = !isDead;
+        if (_characterController.enabled == shouldEnableController)
+        {
+            return;
+        }
+
+        _characterController.enabled = shouldEnableController;
+    }
 
     private void ApplyMove()
     {
@@ -167,7 +183,10 @@ public class CharCtrl : MonoBehaviour
             return;
         }
 
-        if (Param.isLock == false || !_lockedTarget)
+        // 非八向角色始终面朝移动方向；八向角色锁定时面朝敌人
+        bool faceLockTarget = Param.isLock && _lockedTarget != null && Has8DirLocomotion();
+
+        if (!faceLockTarget)
         {
             Vector3 lookDirection = new Vector3(moveDir.x, 0f, moveDir.z);
             if (lookDirection.sqrMagnitude > 0.01f)
@@ -175,7 +194,7 @@ public class CharCtrl : MonoBehaviour
                 RotateTowardsDirection(lookDirection);
             }
         }
-        else if (_lockedTarget != null)
+        else
         {
             Vector3 lookDirection = _lockedTarget.position - transform.position;
             lookDirection.y = 0f;
@@ -326,14 +345,17 @@ public class CharCtrl : MonoBehaviour
     }
     private bool CanMoveByState()
     {
-        // Once the blackboard exists, movement should prefer the folded
-        // state stored there instead of recomputing from multiple sources.
         return CharRuntimeResolver.CanMove(gameObject);
     }
 
     private bool CanRotateByState()
     {
         return CharRuntimeResolver.CanRotate(gameObject);
+    }
+
+    private bool Has8DirLocomotion()
+    {
+        return _animCtrl != null && _animCtrl.Has8DirLocomotion;
     }
 
     private void SyncBlackBoardMotion()
@@ -408,5 +430,5 @@ public class CharCtrl : MonoBehaviour
             ? planarFrameMove / Time.deltaTime
             : Vector3.zero;
     }
-}
 
+}

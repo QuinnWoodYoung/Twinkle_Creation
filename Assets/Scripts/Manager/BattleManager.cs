@@ -28,6 +28,12 @@ public class BattleManager : MonoBehaviour
 
         if (TryResolveWeaponAttacker(col, out GameObject weaponAttacker))
         {
+            AttackData_SO attackData = CharResourceResolver.GetAttackData(weaponAttacker);
+            if (ShouldSkipLegacyWeaponCollisionDamage(attackData))
+            {
+                return;
+            }
+
             TryReceiveAttack(weaponAttacker);
             return;
         }
@@ -70,6 +76,11 @@ public class BattleManager : MonoBehaviour
             return false;
         }
 
+        if (!bullet.UseLegacyCollisionDamage)
+        {
+            return false;
+        }
+
         if (!bullet.TryConsumeImpact())
         {
             return false;
@@ -95,5 +106,23 @@ public class BattleManager : MonoBehaviour
         }
 
         CharResourceResolver.ApplyDamage(defenderUnit, damage);
+    }
+
+    private static bool ShouldSkipLegacyWeaponCollisionDamage(AttackData_SO attackData)
+    {
+        if (attackData == null || !attackData.useLogicHitResolution || attackData.allowLegacyCollisionDamage)
+        {
+            return false;
+        }
+
+        switch (attackData.basicAttackMode)
+        {
+            case BasicAttackMode.RangedStraight:
+            case BasicAttackMode.RangedHoming:
+            case BasicAttackMode.RangedChargeRelease:
+                return true;
+            default:
+                return false;
+        }
     }
 }

@@ -12,5 +12,5 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 4b55afdd0d66b004f842369410e0d501, type: 3}
   m_Name: Slim Data
   m_EditorClassIdentifier: 
-  HitPoint: 50
-  MaxHitPoint: 50
+  HitPoint: 500
+  MaxHitPoint: 500

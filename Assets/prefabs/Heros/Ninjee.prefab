@@ -166,6 +166,7 @@ GameObject:
   - component: {fileID: 2869916835076392705}
   - component: {fileID: 2869916835076392710}
   - component: {fileID: 7405496411316100048}
+  - component: {fileID: 7332370713948995760}
   m_Layer: 7
   m_Name: Ninjee
   m_TagString: Player
@@ -240,6 +241,12 @@ MonoBehaviour:
   isDead: 0
   rightHandSlot: {fileID: 2869916833248269135}
   leftHandSlot: {fileID: 0}
+  _breakOnDmg: 1
+  _useHitReact: 1
+  _hitReactDur: 0.2
+  _hitReactLockMove: 1
+  _hitReactLockRotate: 0
+  _hitReactAnimKey: 
 --- !u!114 &2869916835076392706
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -300,7 +307,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   model: {fileID: 6120975947845203105}
   pi: {fileID: 0}
-  sm: {fileID: 0}
   playerSpeed: 2
   turningSpeed: 0.05
   isDead: 0
@@ -353,6 +359,21 @@ MonoBehaviour:
   barPoint: {fileID: 8213321013932266770}
   alwaysVisible: 1
   visibleTime: 0
+--- !u!114 &7332370713948995760
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2869916835076392767}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 6c3018550b012e2449e1073c8a3e6d6d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  side: 0
+  useExplicitTeamId: 0
+  teamId: -1
 --- !u!1 &4006862923105162477
 GameObject:
   m_ObjectHideFlags: 0

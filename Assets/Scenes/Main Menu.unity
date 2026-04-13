@@ -2220,6 +2220,10 @@ PrefabInstance:
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 7244124549022700275, guid: f297c62b5788b424687925908badb0c7, type: 3}
+      propertyPath: playerPrefab
+      value: 
+      objectReference: {fileID: 2589042607150107925, guid: 9bd6f5d23ce6d5f4b840c03dfbc90ada, type: 3}
     - target: {fileID: 7244124549022700276, guid: f297c62b5788b424687925908badb0c7, type: 3}
       propertyPath: m_Name
       value: SceneController

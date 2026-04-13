@@ -13,7 +13,7 @@ public class CharWeaponCtrl : MonoBehaviour
     private CharBlackBoard _blackBoard;
     private WeaponType _lastWeapon = (WeaponType)(-1);
     private float _attackCooldownRemain;
-    private BasicAttackMode _resolvedAttackMode = BasicAttackMode.MeleeRepeat;
+    private BasicAttackMode _resolvedAttackMode = BasicAttackMode.MeleeCombo;
     private int _comboIndex;
     private float _comboResetRemain;
     private bool _isChargingBasicAttack;
@@ -38,18 +38,10 @@ public class CharWeaponCtrl : MonoBehaviour
     [Header("Light Attack")]
     [SerializeField] private string _lightAtkTrig = "Attack";
     [SerializeField] private string _comboAtkTrig = "Attack";
-    [SerializeField] private string _meleeRepeatTrig = "melee";
     [SerializeField] private float _lightAtkDur = 0.35f;
-    [SerializeField] private bool _lightAtkLockMove = true;
     [SerializeField] private bool _lightAtkLockRotate;
 
-
-    [Header("Weapon Animation")]
-    [SerializeField] private bool _autoWeaponCfg = true;
-
     [Header("Attack Input")]
-    [Tooltip("近战默认按住持续普攻，偏向 Hades 的手感。")]
-    [SerializeField] private bool _repeatMeleeAttackWhileHeld = true;
     [Tooltip("远程默认按住持续普攻。松开后立刻停止后续连射。")]
     [SerializeField] private bool _repeatRangedAttackWhileHeld = true;
 
@@ -58,16 +50,6 @@ public class CharWeaponCtrl : MonoBehaviour
     [SerializeField] private bool _useMeleeTargetAssist = true;
     [Tooltip("近战目标辅助的搜索角度。")]
     [SerializeField] private float _meleeAssistAngle = 40f;
-    [Tooltip("近战 repeat 模式里，位移锁持续到一次攻击周期的哪个比例。1 表示整段周期都锁住。")]
-    [SerializeField] private float _meleeRepeatLockMoveFraction = 0.75f;
-    [Tooltip("近战 repeat 优先使用角色 Animator 的 meleeSpeed 参数，而不是全局 Animator.speed。")]
-    [SerializeField] private bool _useBodyMeleeSpeedParam = true;
-    [Tooltip("长按 repeat 时，动作结束后至少保留这么久的可移动空窗，避免同帧续刀吞掉位移。")]
-    [SerializeField] private float _meleeRepeatHoldRestartDelay = 0.02f;
-    [Tooltip("近战 repeat 链中如果正在移动，则不驱动 locomotion 动画，只保留纯位移。")]
-    [SerializeField] private bool _suppressMoveAnimDuringMeleeRepeat = true;
-    [Tooltip("近战 repeat 输入断开后，仍然保留多久的盯鼠标状态，用来把连按和长按统一成同一段连打意图。")]
-    [SerializeField] private float _meleeRepeatAimGraceTime = 0.16f;
     [Tooltip("近战 combo 链中如果正在移动，则不驱动 locomotion 动画，只保留纯位移。")]
     [SerializeField] private bool _suppressMoveAnimDuringMeleeCombo = true;
     [Tooltip("近战 combo 两次点击之间，仍然保留多久的盯鼠标状态。")]
@@ -82,18 +64,14 @@ public class CharWeaponCtrl : MonoBehaviour
     [SerializeField] private float _rangedAssistAngle = 25f;
     [Tooltip("远程普攻在发射前是否强制面向攻击方向。")]
     [SerializeField] private bool _faceAttackDirection = true;
-    [Tooltip("近战 repeat 且允许移动时，移动中不再每刀强制抢朝向，避免边走边砍时抽搐。")]
-    [SerializeField] private bool _suppressRepeatFaceWhileMoving = true;
     [Tooltip("用于朝向修正的短暂锁向时长。")]
     [SerializeField] private float _attackFaceLockDuration = 0.08f;
 
     private float _activeAttackAnimSpeed = 1f;
-    private bool _keepRepeatAttackAnimSpeed;
-    private float _meleeRepeatHoldRestartBlockRemain;
-    private float _meleeRepeatAimGraceRemain;
-    private Vector3 _meleeRepeatAimDirection = Vector3.forward;
     private float _meleeComboAimGraceRemain;
     private Vector3 _meleeComboAimDirection = Vector3.forward;
+
+    // ──────────────────── Lifecycle ────────────────────
 
     protected void Awake()
     {
@@ -104,9 +82,7 @@ public class CharWeaponCtrl : MonoBehaviour
         _blackBoard = GetComponent<CharBlackBoard>();
 
         if (_animCtrl == null)
-        {
             _animCtrl = gameObject.AddComponent<CharAnimCtrl>();
-        }
 
         CacheWeaponRoot();
         CacheWeaponAnimator();
@@ -118,15 +94,12 @@ public class CharWeaponCtrl : MonoBehaviour
     {
         RefreshWeaponAnim();
         SyncWeaponCfg();
-        SyncBlackBoardWeapon();
     }
 
     private void OnEnable()
     {
         if (_actionCtrl == null)
-        {
             _actionCtrl = GetComponent<CharActionCtrl>();
-        }
 
         if (_actionCtrl != null)
         {
@@ -149,24 +122,10 @@ public class CharWeaponCtrl : MonoBehaviour
     private void Update()
     {
         if (_attackCooldownRemain > 0f)
-        {
             _attackCooldownRemain -= Time.deltaTime;
-        }
-
-        if (_meleeRepeatHoldRestartBlockRemain > 0f)
-        {
-            _meleeRepeatHoldRestartBlockRemain -= Time.deltaTime;
-        }
-
-        if (_meleeRepeatAimGraceRemain > 0f)
-        {
-            _meleeRepeatAimGraceRemain -= Time.deltaTime;
-        }
 
         if (_meleeComboAimGraceRemain > 0f)
-        {
             _meleeComboAimGraceRemain -= Time.deltaTime;
-        }
 
         if (_comboResetRemain > 0f)
         {
@@ -186,167 +145,115 @@ public class CharWeaponCtrl : MonoBehaviour
             NotifyWeaponChanged();
         }
 
-        UpdateAtkInput_New();
-        UpdateRepeatAttackAnimSpeedState();
+        UpdateAtkInput();
     }
 
-    private void UpdateAtkInput_New()
+    // ──────────────────── Attack Input ────────────────────
+
+    private void UpdateAtkInput()
     {
         if (_charCtrl == null || _charCtrl.Param == null)
-        {
             return;
-        }
 
         AttackInputState input = _charCtrl.Param.AttackState;
-        AttackData_SO attackProfile = ResolveAttackProfile();
+        AttackData_SO profile = ResolveAttackProfile();
 
         switch (_resolvedAttackMode)
         {
             case BasicAttackMode.MeleeCombo:
-                if (input.isDown)
-                {
-                    TryComboAtk_New(attackProfile);
-                }
-
+                if (input.isDown) TryComboAtk(profile);
                 return;
 
             case BasicAttackMode.RangedChargeRelease:
-                UpdateChargeReleaseInput(input, attackProfile);
+                UpdateChargeReleaseInput(input, profile);
                 return;
         }
 
-        if (ShouldRepeatAttackWhileHeld(_resolvedAttackMode))
+        // RangedStraight / RangedHoming
+        bool repeat = (_resolvedAttackMode == BasicAttackMode.RangedStraight
+                    || _resolvedAttackMode == BasicAttackMode.RangedHoming)
+                    && _repeatRangedAttackWhileHeld;
+
+        if (repeat)
         {
-            if (!input.isHeld && !input.isDown)
-            {
-                return;
-            }
-
-            if (_resolvedAttackMode == BasicAttackMode.MeleeRepeat &&
-                !input.isDown &&
-                _meleeRepeatHoldRestartBlockRemain > 0f)
-            {
-                return;
-            }
-
-            TryLightAtk_New(attackProfile, ResolveDefaultAttackAnimKey(attackProfile));
-            return;
+            if (input.isHeld || input.isDown)
+                TryLightAtk(profile, ResolveDefaultAttackAnimKey(profile));
         }
-
-        if (input.isDown)
+        else if (input.isDown)
         {
-            TryLightAtk_New(attackProfile, ResolveDefaultAttackAnimKey(attackProfile));
+            TryLightAtk(profile, ResolveDefaultAttackAnimKey(profile));
         }
     }
 
+    // ──────────────────── Action Callbacks ────────────────────
+
     private void OnActionStart(CharActionReq req)
     {
-        if (req == null || req.type != CharActionType.Atk || req.src != this)
-        {
-            return;
-        }
-
-        // Presentation waits until the action request is really accepted.
-        PlayAtk_New(req.animKey);
+        if (req == null || req.type != CharActionType.Atk || req.src != this) return;
+        PlayAtk(req.animKey);
     }
 
     private void OnActionEnd(CharActionReq req)
     {
-        if (req == null || req.type != CharActionType.Atk || req.src != this)
-        {
-            return;
-        }
-
-        if (_resolvedAttackMode == BasicAttackMode.MeleeRepeat)
-        {
-            _meleeRepeatHoldRestartBlockRemain = Mathf.Max(
-                _meleeRepeatHoldRestartBlockRemain,
-                Mathf.Max(_attackCooldownRemain, _meleeRepeatHoldRestartDelay));
-            return;
-        }
-
-        ResetAttackAnimSpeed();
+        if (req == null || req.type != CharActionType.Atk || req.src != this) return;
+        SetAttackAnimSpeed(1f);
     }
 
     private void OnActionInterrupted(CharActionReq req, string reason)
     {
-        if (req == null || req.type != CharActionType.Atk || req.src != this)
-        {
-            return;
-        }
-
-        _keepRepeatAttackAnimSpeed = false;
-        _meleeRepeatHoldRestartBlockRemain = 0f;
-        _meleeRepeatAimGraceRemain = 0f;
+        if (req == null || req.type != CharActionType.Atk || req.src != this) return;
         _meleeComboAimGraceRemain = 0f;
-        ResetAttackAnimSpeed();
+        SetAttackAnimSpeed(1f);
     }
 
-    private bool TryLightAtk_New(AttackData_SO attackProfile, string animKey = null)
+    // ──────────────────── Light Attack ────────────────────
+
+    private bool TryLightAtk(AttackData_SO profile, string animKey = null)
     {
         string finalAnimKey = string.IsNullOrEmpty(animKey) ? _lightAtkTrig : animKey;
-        float attackCycleDuration = ResolveAttackCycleDuration(attackProfile, _resolvedAttackMode);
-        float attackDuration = ResolveActionDuration(attackProfile, _resolvedAttackMode);
-        bool lockMove = _autoWeaponCfg ? !CanMoveOnAtkByWeapon() : _lightAtkLockMove;
-        if (!TryStartAtk_New(finalAnimKey, attackDuration, lockMove, _lightAtkLockRotate, true, false, attackCycleDuration))
-        {
+        float dur = ResolveAttackDuration(profile);
+        bool lockMove = !CanMoveWhileAttacking(profile);
+
+        if (!TryStartAtk(finalAnimKey, dur, lockMove, _lightAtkLockRotate, true, false, dur))
             return false;
-        }
 
         if (_actionCtrl == null)
-        {
-            PlayAtk_New(finalAnimKey);
-        }
+            PlayAtk(finalAnimKey);
 
         return true;
     }
 
-    private bool TryStartAtk_New(
-        string animKey,
-        float dur,
-        bool lockMove,
-        bool lockRotate,
-        bool applyCooldown = true,
-        bool allowReplaceActiveAttack = false,
+    private bool TryStartAtk(
+        string animKey, float dur, bool lockMove, bool lockRotate,
+        bool applyCooldown = true, bool allowReplaceActiveAttack = false,
         float cooldownFallbackDuration = -1f)
     {
-        if (!CanAtkByState_New())
-        {
+        if (!CharRuntimeResolver.CanAttack(gameObject))
             return false;
-        }
 
         // 只有在动作控制器真的处于非 Idle 状态时，才认为当前被动作占用。
-        // 这样可以兜住场景序列化残留造成的“CurReq 非空但实际上空闲”的情况。
-        if (_actionCtrl != null &&
-            _actionCtrl.CurReq != null &&
-            _actionCtrl.State != CharActionState.Idle &&
-            !CanReplaceActiveAttack(allowReplaceActiveAttack))
-        {
+        if (_actionCtrl != null
+            && _actionCtrl.CurReq != null
+            && _actionCtrl.State != CharActionState.Idle
+            && !CanReplaceActiveAttack(allowReplaceActiveAttack))
             return false;
-        }
 
         if (applyCooldown && _attackCooldownRemain > 0f)
-        {
             return false;
-        }
 
         if (_actionCtrl == null)
         {
             if (applyCooldown)
-            {
                 BeginAttackCooldown(cooldownFallbackDuration >= 0f ? cooldownFallbackDuration : dur);
-            }
             return true;
         }
-
-        float actionDuration = Mathf.Max(0.01f, dur);
 
         CharActionReq req = new CharActionReq
         {
             type = CharActionType.Atk,
             state = CharActionState.AtkWindup,
             src = this,
-            dur = actionDuration,
+            dur = Mathf.Max(0.01f, dur),
             lockMove = lockMove,
             lockRotate = lockRotate,
             interruptible = true,
@@ -354,40 +261,112 @@ public class CharWeaponCtrl : MonoBehaviour
         };
 
         if (!_actionCtrl.TryStart(req))
-        {
             return false;
-        }
 
         if (applyCooldown)
-        {
-            BeginAttackCooldown(cooldownFallbackDuration >= 0f ? cooldownFallbackDuration : actionDuration);
-        }
+            BeginAttackCooldown(cooldownFallbackDuration >= 0f ? cooldownFallbackDuration : req.dur);
         return true;
     }
 
-    private bool CanAtkByState_New()
-    {
-        return CharRuntimeResolver.CanAttack(gameObject);
-    }
+    // ──────────────────── Combo Attack ────────────────────
 
-    private void PlayAtk_New(string trig)
+    private void TryComboAtk(AttackData_SO profile)
     {
-        AttackData_SO attackProfile = ResolveAttackProfile();
-        ApplyAttackAnimSpeed(attackProfile, _resolvedAttackMode);
-        if (_resolvedAttackMode == BasicAttackMode.MeleeRepeat)
+        string comboAnimKey = ResolveComboAnimKey(profile);
+        bool lockMove = !CanMoveWhileAttacking(profile);
+
+        if (!TryStartAtk(comboAnimKey, Mathf.Max(0.01f, _lightAtkDur),
+                lockMove, _lightAtkLockRotate, false, true))
+            return;
+
+        if (_actionCtrl == null)
         {
-            _keepRepeatAttackAnimSpeed = true;
+            SetAttackAnimSpeed(1f);
+            PlayAtk(comboAnimKey);
         }
 
-        BasicAttackTargetInfo targetInfo = ResolveBasicAttackTarget(attackProfile, _resolvedAttackMode);
+        int comboCount = profile?.comboAnimKeys?.Length ?? 0;
+        if (comboCount > 0)
+            _comboIndex = (_comboIndex + 1) % comboCount;
+
+        _comboResetRemain = profile != null && profile.comboResetTime > 0f
+            ? profile.comboResetTime : 0.6f;
+    }
+
+    private string ResolveComboAnimKey(AttackData_SO profile)
+    {
+        if (profile == null || profile.comboAnimKeys == null || profile.comboAnimKeys.Length == 0)
+            return _comboAtkTrig;
+
+        int slot = _comboResetRemain > 0f ? _comboIndex : 0;
+        slot = Mathf.Clamp(slot, 0, profile.comboAnimKeys.Length - 1);
+        string key = profile.comboAnimKeys[slot];
+        return string.IsNullOrEmpty(key) ? _comboAtkTrig : key;
+    }
+
+    // ──────────────────── Charge Attack ────────────────────
+
+    private void UpdateChargeReleaseInput(AttackInputState input, AttackData_SO profile)
+    {
+        if (input.isDown)
+            TryBeginChargeAttack();
+
+        if (_isChargingBasicAttack && input.isHeld)
+        {
+            float maxCharge = profile != null && profile.maxChargeTime > 0f
+                ? profile.maxChargeTime : 1.2f;
+            _chargeHoldTime = Mathf.Min(_chargeHoldTime + Time.deltaTime, maxCharge);
+            return;
+        }
+
+        if (_isChargingBasicAttack && input.isUp)
+        {
+            float minCharge = profile != null && profile.minChargeTime > 0f
+                ? profile.minChargeTime : 0.15f;
+
+            if (_chargeHoldTime >= minCharge)
+            {
+                string releaseKey = profile != null && !string.IsNullOrEmpty(profile.chargeReleaseAnimKey)
+                    ? profile.chargeReleaseAnimKey
+                    : ResolveDefaultAttackAnimKey(profile);
+                TryLightAtk(profile, releaseKey);
+            }
+
+            ResetChargeAttack();
+        }
+    }
+
+    private void TryBeginChargeAttack()
+    {
+        if (_attackCooldownRemain > 0f)
+            return;
+        if (_actionCtrl != null && _actionCtrl.CurReq != null && _actionCtrl.State != CharActionState.Idle)
+            return;
+
+        _isChargingBasicAttack = true;
+        _chargeHoldTime = 0f;
+    }
+
+    private void ResetChargeAttack()
+    {
+        _isChargingBasicAttack = false;
+        _chargeHoldTime = 0f;
+    }
+
+    // ──────────────────── Play Attack ────────────────────
+
+    private void PlayAtk(string trig)
+    {
+        AttackData_SO profile = ResolveAttackProfile();
+        SetAttackAnimSpeed(1f);
+
+        BasicAttackTargetInfo targetInfo = ResolveBasicAttackTarget(profile, _resolvedAttackMode);
         UpdateBlackBoardAttackTarget(targetInfo);
 
         if (ShouldForceFaceAttackDirection(targetInfo))
         {
             _charCtrl.ForceBasicAttackFaceDirection(
-                targetInfo.attackDirection,
-                ResolveAttackFaceLockDuration(attackProfile),
-                true);
+                targetInfo.attackDirection, _attackFaceLockDuration, true);
         }
 
         if (_weaponAnimCtrl == null)
@@ -399,10 +378,7 @@ public class CharWeaponCtrl : MonoBehaviour
         if (_weaponAnimCtrl != null)
         {
             if (_debugWeaponAnim)
-            {
                 Debug.Log($"[CharWeaponCtrl] PlayAtk trig={trig} root={_weaponRoot?.name} weaponAnim={_weaponAnimCtrl.name} curWeapon={_currentWeapon}", this);
-            }
-
             _weaponAnimCtrl.PlayAtk(trig);
         }
         else if (_debugWeaponAnim)
@@ -410,19 +386,91 @@ public class CharWeaponCtrl : MonoBehaviour
             Debug.LogWarning($"[CharWeaponCtrl] PlayAtk failed, no WeaponAnimCtrl. root={_weaponRoot?.name} animator={_weaponAnimator?.name} curWeapon={_currentWeapon}", this);
         }
 
+        PlayAttackCastVfx(profile, targetInfo);
+
         if (IsRangedAttackMode(_resolvedAttackMode))
         {
-            Shoot(targetInfo, attackProfile, _resolvedAttackMode);
+            Shoot(targetInfo, profile, _resolvedAttackMode);
+            return;
         }
     }
 
-    public void SetWeapon(WeaponType weaponType)
+    // ──────────────────── Shooting ────────────────────
+
+    private void Shoot(BasicAttackTargetInfo targetInfo, AttackData_SO profile, BasicAttackMode attackMode)
     {
-        if (_currentWeapon == weaponType)
-        {
+        if (!Weapon.IsRangedWeapon(_currentWeapon) || !IsRangedAttackMode(attackMode))
             return;
+
+        GameObject prefab = profile != null && profile.projectilePrefab != null
+            ? profile.projectilePrefab : bulletPrefab;
+        float speed = profile != null && profile.projectileSpeed > 0f
+            ? profile.projectileSpeed : bulletSpeed;
+        float turnSpeed = profile != null && profile.homingTurnSpeed > 0f
+            ? profile.homingTurnSpeed : 18f;
+        Transform spawnPoint = ResolveProjectileSpawnPoint(profile);
+
+        if (prefab == null || spawnPoint == null)
+            return;
+
+        Vector3 fireDir = targetInfo.attackDirection.sqrMagnitude > 0.001f
+            ? targetInfo.attackDirection
+            : spawnPoint.forward;
+
+        GameObject newBullet = Instantiate(prefab, spawnPoint.position, Quaternion.LookRotation(fireDir));
+
+        Rigidbody rb = newBullet.GetComponent<Rigidbody>();
+        if (rb != null)
+            rb.velocity = fireDir * speed;
+
+        Bullet bullet = newBullet.GetComponent<Bullet>();
+        if (bullet != null)
+        {
+            bullet.launcher = gameObject;
+            bullet.ConfigureFromAttackProfile(profile);
+            bullet.SetMoveSpeed(speed);
+            bullet.SetImpactVfx(profile != null ? profile.attackHitVfx : null);
+
+            if ((attackMode == BasicAttackMode.RangedHoming || attackMode == BasicAttackMode.RangedChargeRelease)
+                && targetInfo.targetUnit != null)
+            {
+                bullet.SetHomingTarget(targetInfo.targetUnit.transform, speed, turnSpeed);
+            }
+            else
+            {
+                bullet.ClearHoming();
+                bullet.SetStraightFlight(fireDir, speed);
+            }
+        }
+        else if (rb != null)
+        {
+            rb.velocity = fireDir * speed;
+        }
+    }
+
+    private Transform ResolveProjectileSpawnPoint(AttackData_SO profile)
+    {
+        if (bulletSpawnPoint != null)
+            return bulletSpawnPoint;
+
+        string spawnPointName = profile != null && !string.IsNullOrEmpty(profile.projectileSpawnPointName)
+            ? profile.projectileSpawnPointName
+            : _projectileSpawnPointName;
+
+        if (_weaponRoot != null)
+        {
+            Transform named = FindChildRecursive(_weaponRoot, spawnPointName);
+            return named != null ? named : _weaponRoot;
         }
 
+        return transform;
+    }
+
+    // ──────────────────── Weapon Management ────────────────────
+
+    public void SetWeapon(WeaponType weaponType)
+    {
+        if (_currentWeapon == weaponType) return;
         _currentWeapon = weaponType;
         SyncWeaponCfg();
         SyncBlackBoardWeapon();
@@ -439,14 +487,10 @@ public class CharWeaponCtrl : MonoBehaviour
         CacheWeaponAnimCtrl();
 
         if (_weaponAnimCtrl != null)
-        {
             _weaponAnimCtrl.Bind(gameObject, _currentWeapon);
-        }
 
         if (_debugWeaponAnim)
-        {
             Debug.Log($"[CharWeaponCtrl] BindWeaponRoot root={_weaponRoot?.name} anim={_weaponAnimator?.name} ctrl={_weaponAnimCtrl?.name} curWeapon={_currentWeapon}", this);
-        }
 
         SyncBlackBoardWeapon();
     }
@@ -454,9 +498,7 @@ public class CharWeaponCtrl : MonoBehaviour
     public void ClearWeaponRoot()
     {
         if (_weaponAnimCtrl != null)
-        {
             _weaponAnimCtrl.Unbind();
-        }
 
         _weaponRoot = null;
         _weaponAnimator = null;
@@ -475,362 +517,59 @@ public class CharWeaponCtrl : MonoBehaviour
             return;
         }
 
-        Animator bodyAnimator = _animCtrl != null ? _animCtrl.BodyAnim : null;
-        Animator[] animators = _weaponRoot.GetComponentsInChildren<Animator>(true);
-        _weaponAnimator = null;
-
-        for (int i = 0; i < animators.Length; i++)
-        {
-            Animator animator = animators[i];
-            if (animator != null && animator != bodyAnimator)
-            {
-                _weaponAnimator = animator;
-                break;
-            }
-        }
-
+        _weaponAnimator = FindWeaponAnimator(_weaponRoot);
         _weaponAnimCtrl = null;
         CacheWeaponAnimCtrl();
 
         if (_weaponAnimCtrl != null)
-        {
             _weaponAnimCtrl.Bind(gameObject, _currentWeapon);
-        }
 
         if (_debugWeaponAnim)
-        {
             Debug.Log($"[CharWeaponCtrl] RefreshWeaponAnim root={_weaponRoot?.name} anim={_weaponAnimator?.name} ctrl={_weaponAnimCtrl?.name} curWeapon={_currentWeapon}", this);
-        }
 
         SyncBlackBoardWeapon();
     }
+
+    // ──────────────────── Sync & Resolve ────────────────────
 
     private void SyncWeaponCfg()
     {
         _lastWeapon = _currentWeapon;
+        _lightAtkTrig = Weapon.GetAtkAnimName(_currentWeapon);
 
-        if (_autoWeaponCfg)
-        {
-            // Attack keys stay simple; weapon difference is mostly movement and layers.
-            _lightAtkTrig = Weapon.GetAtkAnimName(_currentWeapon);
-        }
-
-        if (_weaponRoot == null)
-        {
-            CacheWeaponRoot();
-        }
-
-        if (_weaponAnimator == null)
-        {
-            CacheWeaponAnimator();
-        }
-
-        if (_weaponAnimCtrl == null)
-        {
-            CacheWeaponAnimCtrl();
-        }
+        if (_weaponRoot == null) CacheWeaponRoot();
+        if (_weaponAnimator == null) CacheWeaponAnimator();
+        if (_weaponAnimCtrl == null) CacheWeaponAnimCtrl();
 
         if (_weaponAnimCtrl != null)
-        {
             _weaponAnimCtrl.Bind(gameObject, _currentWeapon);
-        }
 
         SyncBlackBoardWeapon();
     }
 
-    private bool CanMoveOnAtkByWeapon()
-    {
-        // Current simplified rule: axe attack locks movement, most others do not.
-        return Weapon.CanMoveAtk(_currentWeapon);
-    }
-
-    private bool ShouldRepeatAttackWhileHeld(BasicAttackMode attackMode)
-    {
-        switch (attackMode)
-        {
-            case BasicAttackMode.MeleeRepeat:
-                return _repeatMeleeAttackWhileHeld;
-
-            case BasicAttackMode.RangedStraight:
-            case BasicAttackMode.RangedHoming:
-                return _repeatRangedAttackWhileHeld;
-
-            default:
-                return false;
-        }
-    }
-
-    private BasicAttackTargetInfo ResolveBasicAttackTarget(AttackData_SO attackProfile, BasicAttackMode attackMode)
-    {
-        if (_charCtrl == null)
-        {
-            return default;
-        }
-
-        bool isRanged = IsRangedAttackMode(attackMode);
-        float range = isRanged
-            ? CharResourceResolver.GetMaxAttackRange(gameObject)
-            : CharResourceResolver.GetAttackRange(gameObject);
-
-        if (range <= 0f)
-        {
-            range = isRanged ? 8f : 2f;
-        }
-
-        BasicAttackTargetingMode targetingMode = ResolveTargetingMode(attackMode, attackProfile);
-        float assistAngle = isRanged ? _rangedAssistAngle : _meleeAssistAngle;
-        bool preferLockedTarget = ResolvePreferLockedTarget(attackMode, attackProfile);
-        bool useLockedAim = attackMode != BasicAttackMode.RangedStraight;
-
-        return CharBasicAttackTargeting.Resolve(
-            gameObject,
-            _charCtrl,
-            targetingMode,
-            range,
-            assistAngle,
-            preferLockedTarget,
-            useLockedAim);
-    }
-
-    private void BeginAttackCooldown(float fallbackDuration)
-    {
-        float cooldown = ResolveAttackInterval(fallbackDuration, _resolvedAttackMode);
-        _attackCooldownRemain = Mathf.Max(0f, cooldown);
-    }
-
-    private float ResolveAttackInterval(float fallbackDuration, BasicAttackMode attackMode)
-    {
-        float attackSpeed = CharResourceResolver.GetAttackSpeed(gameObject);
-        float explicitCooldown = CharResourceResolver.GetAttackCooldown(gameObject);
-
-        // Repeat attack cadence should primarily follow attack speed. Cooldown is
-        // kept as fallback so old weapon data still works when attackSpeed is 0.
-        if (attackMode == BasicAttackMode.MeleeRepeat)
-        {
-            if (attackSpeed > 0f)
-            {
-                return 1f / attackSpeed;
-            }
-
-            if (explicitCooldown > 0f)
-            {
-                return explicitCooldown;
-            }
-        }
-
-        // Non-repeat modes keep authored cooldown priority to preserve existing
-        // behavior for ranged/manual timing setups.
-        if (explicitCooldown > 0f)
-        {
-            return explicitCooldown;
-        }
-
-        if (attackSpeed > 0f)
-        {
-            return 1f / attackSpeed;
-        }
-
-        return Mathf.Max(0f, fallbackDuration);
-    }
-
-    private void CacheWeaponAnimator()
-    {
-        if (_weaponRoot != null)
-        {
-            Animator[] rootAnimators = _weaponRoot.GetComponentsInChildren<Animator>(true);
-            Animator bodyAnimator = _animCtrl != null ? _animCtrl.BodyAnim : null;
-            for (int i = 0; i < rootAnimators.Length; i++)
-            {
-                Animator animator = rootAnimators[i];
-                if (animator != null && animator != bodyAnimator)
-                {
-                    _weaponAnimator = animator;
-                    return;
-                }
-            }
-        }
-
-        Animator[] animators = GetComponentsInChildren<Animator>(true);
-        Animator ownBodyAnimator = _animCtrl != null ? _animCtrl.BodyAnim : null;
-        for (int i = 0; i < animators.Length; i++)
-        {
-            Animator animator = animators[i];
-            if (animator != null && animator != ownBodyAnimator)
-            {
-                _weaponAnimator = animator;
-                return;
-            }
-        }
-    }
-
-    private void CacheWeaponAnimCtrl()
-    {
-        if (_weaponAnimCtrl != null)
-        {
-            return;
-        }
-
-        if (_weaponRoot != null)
-        {
-            _weaponAnimCtrl = _weaponRoot.GetComponent<WeaponAnimCtrl>();
-            if (_weaponAnimCtrl == null)
-            {
-                _weaponAnimCtrl = _weaponRoot.GetComponentInChildren<WeaponAnimCtrl>(true);
-            }
-
-            if (_weaponAnimCtrl == null)
-            {
-                _weaponAnimCtrl = _weaponRoot.gameObject.AddComponent<WeaponAnimCtrl>();
-            }
-
-            return;
-        }
-
-        if (_weaponAnimator != null)
-        {
-            _weaponAnimCtrl = _weaponAnimator.GetComponent<WeaponAnimCtrl>();
-            if (_weaponAnimCtrl == null)
-            {
-                _weaponAnimCtrl = _weaponAnimator.GetComponentInParent<WeaponAnimCtrl>();
-            }
-
-            return;
-        }
-
-        WeaponAnimCtrl[] ctrls = GetComponentsInChildren<WeaponAnimCtrl>(true);
-        for (int i = 0; i < ctrls.Length; i++)
-        {
-            if (ctrls[i] != null)
-            {
-                _weaponAnimCtrl = ctrls[i];
-                return;
-            }
-        }
-    }
-
-    private void CacheWeaponRoot()
-    {
-        if (_weaponVisualCtrl == null)
-        {
-            _weaponVisualCtrl = GetComponent<WeaponVisualCtrl>();
-        }
-
-        _weaponRoot = CharEquipmentResolver.ResolveWeaponRoot(
-            gameObject,
-            _blackBoard,
-            _weaponVisualCtrl,
-            _animCtrl,
-            _currentWeapon);
-    }
-
-    private void SyncBlackBoardWeapon()
-    {
-        if (_blackBoard == null || !_blackBoard.Features.useEquipment)
-        {
-            return;
-        }
-
-        // Weapon ownership still lives here. The blackboard only mirrors the result.
-        _blackBoard.Equipment.weaponType = _currentWeapon;
-        _blackBoard.Equipment.weaponRoot = _weaponRoot;
-        CharBlackBoardChangeMask changeMask = CharBlackBoardChangeMask.Equipment;
-        if (_blackBoard.Features.useTargeting)
-        {
-            changeMask |= CharBlackBoardChangeMask.Targeting;
-        }
-
-        _blackBoard.MarkRuntimeChanged(changeMask);
-    }
-
-    private void NotifyWeaponChanged()
-    {
-        WeaponChanged?.Invoke(_currentWeapon);
-    }
-
-    private void Shoot(BasicAttackTargetInfo targetInfo, AttackData_SO attackProfile, BasicAttackMode attackMode)
-    {
-        if (_currentWeapon != WeaponType.Bow || !IsRangedAttackMode(attackMode))
-        {
-            return;
-        }
-
-        GameObject projectilePrefab = ResolveProjectilePrefab(attackProfile);
-        float projectileSpeed = ResolveProjectileSpeed(attackProfile);
-        float homingTurnSpeed = ResolveProjectileTurnSpeed(attackProfile);
-        Transform projectileSpawnPoint = ResolveProjectileSpawnPoint();
-
-        if (projectilePrefab == null || projectileSpawnPoint == null)
-        {
-            return;
-        }
-
-        Vector3 fireDirection = targetInfo.attackDirection.sqrMagnitude > 0.001f
-            ? targetInfo.attackDirection
-            : projectileSpawnPoint.forward;
-
-        GameObject newBullet = Instantiate(
-            projectilePrefab,
-            projectileSpawnPoint.position,
-            Quaternion.LookRotation(fireDirection));
-
-        Rigidbody rb = newBullet.GetComponent<Rigidbody>();
-        if (rb != null)
-        {
-            rb.velocity = fireDirection * projectileSpeed;
-        }
-
-        Bullet bullet = newBullet.GetComponent<Bullet>();
-        if (bullet != null)
-        {
-            bullet.launcher = gameObject;
-            bullet.SetMoveSpeed(projectileSpeed);
-
-            if ((attackMode == BasicAttackMode.RangedHoming || attackMode == BasicAttackMode.RangedChargeRelease) &&
-                targetInfo.targetUnit != null)
-            {
-                bullet.SetHomingTarget(targetInfo.targetUnit.transform, projectileSpeed, homingTurnSpeed);
-            }
-            else
-            {
-                bullet.ClearHoming();
-            }
-        }
-    }
-
     private void SyncResolvedAttackProfile()
     {
-        AttackData_SO attackProfile = ResolveAttackProfile();
-        _resolvedAttackMode = ResolveBasicAttackMode(attackProfile);
+        AttackData_SO profile = ResolveAttackProfile();
+        BasicAttackMode newMode = ResolveBasicAttackMode(profile);
 
-        string resolvedAttackAnimKey = ResolveDefaultAttackAnimKey(attackProfile);
-        if (!string.IsNullOrEmpty(resolvedAttackAnimKey))
+        // 只在模式真正切换时才重置旧模式的状态
+        if (newMode != _resolvedAttackMode)
         {
-            _lightAtkTrig = resolvedAttackAnimKey;
+            if (_resolvedAttackMode == BasicAttackMode.MeleeCombo)
+            {
+                _comboIndex = 0;
+                _comboResetRemain = 0f;
+                _meleeComboAimGraceRemain = 0f;
+            }
+            if (_resolvedAttackMode == BasicAttackMode.RangedChargeRelease)
+                ResetChargeAttack();
+
+            _resolvedAttackMode = newMode;
         }
 
-        if (_resolvedAttackMode != BasicAttackMode.MeleeCombo)
-        {
-            _comboIndex = 0;
-            _comboResetRemain = 0f;
-        }
-
-        if (_resolvedAttackMode != BasicAttackMode.RangedChargeRelease)
-        {
-            ResetChargeAttack();
-        }
-
-        if (_resolvedAttackMode != BasicAttackMode.MeleeCombo)
-        {
-            _meleeComboAimGraceRemain = 0f;
-        }
-
-        if (_resolvedAttackMode != BasicAttackMode.MeleeRepeat)
-        {
-            _meleeRepeatHoldRestartBlockRemain = 0f;
-            _meleeRepeatAimGraceRemain = 0f;
-            _keepRepeatAttackAnimSpeed = false;
-            ResetAttackAnimSpeed();
-        }
+        string animKey = ResolveDefaultAttackAnimKey(profile);
+        if (!string.IsNullOrEmpty(animKey))
+            _lightAtkTrig = animKey;
     }
 
     private AttackData_SO ResolveAttackProfile()
@@ -838,293 +577,60 @@ public class CharWeaponCtrl : MonoBehaviour
         return CharResourceResolver.GetAttackData(gameObject);
     }
 
-    private BasicAttackMode ResolveBasicAttackMode(AttackData_SO attackProfile)
+    private BasicAttackMode ResolveBasicAttackMode(AttackData_SO profile)
     {
-        bool isBow = _currentWeapon == WeaponType.Bow;
-        if (attackProfile == null)
-        {
-            return isBow
-                ? BasicAttackMode.RangedHoming
-                : BasicAttackMode.MeleeRepeat;
-        }
+        bool isRanged = Weapon.IsRangedWeapon(_currentWeapon);
+        if (profile == null)
+            return isRanged ? BasicAttackMode.RangedHoming : BasicAttackMode.MeleeCombo;
 
-        if (isBow && attackProfile.basicAttackMode == BasicAttackMode.MeleeRepeat)
-        {
+        if (isRanged && !IsRangedAttackMode(profile.basicAttackMode))
             return BasicAttackMode.RangedHoming;
-        }
 
-        if (!isBow && IsRangedAttackMode(attackProfile.basicAttackMode))
-        {
-            return BasicAttackMode.MeleeRepeat;
-        }
+        if (!isRanged && IsRangedAttackMode(profile.basicAttackMode))
+            return BasicAttackMode.MeleeCombo;
 
-        return attackProfile.basicAttackMode;
+        return profile.basicAttackMode;
     }
 
-    private string ResolveDefaultAttackAnimKey(AttackData_SO attackProfile)
+    private string ResolveDefaultAttackAnimKey(AttackData_SO profile)
     {
-        if (_currentWeapon != WeaponType.Bow)
-        {
-            if (_resolvedAttackMode == BasicAttackMode.MeleeRepeat)
-            {
-                return _meleeRepeatTrig;
-            }
-
-            if (_resolvedAttackMode == BasicAttackMode.MeleeCombo)
-            {
-                return _comboAtkTrig;
-            }
-        }
-
-        if (attackProfile != null && !string.IsNullOrEmpty(attackProfile.attackAnimKey))
-        {
-            return attackProfile.attackAnimKey;
-        }
-
-        if (_autoWeaponCfg)
-        {
-            return Weapon.GetAtkAnimName(_currentWeapon);
-        }
-
-        return _lightAtkTrig;
-    }
-
-    private float ResolveAttackDuration(AttackData_SO attackProfile)
-    {
-        if (attackProfile != null && attackProfile.attackTime > 0f)
-        {
-            return attackProfile.attackTime;
-        }
-
-        return _lightAtkDur;
-    }
-
-    private GameObject ResolveProjectilePrefab(AttackData_SO attackProfile)
-    {
-        if (attackProfile != null && attackProfile.projectilePrefab != null)
-        {
-            return attackProfile.projectilePrefab;
-        }
-
-        return bulletPrefab;
-    }
-
-    private float ResolveProjectileSpeed(AttackData_SO attackProfile)
-    {
-        if (attackProfile != null && attackProfile.projectileSpeed > 0f)
-        {
-            return attackProfile.projectileSpeed;
-        }
-
-        return bulletSpeed;
-    }
-
-    private float ResolveProjectileTurnSpeed(AttackData_SO attackProfile)
-    {
-        if (attackProfile != null && attackProfile.homingTurnSpeed > 0f)
-        {
-            return attackProfile.homingTurnSpeed;
-        }
-
-        return 18f;
-    }
-
-    private Transform ResolveProjectileSpawnPoint()
-    {
-        if (bulletSpawnPoint != null)
-        {
-            return bulletSpawnPoint;
-        }
-
-        if (_weaponRoot != null)
-        {
-            Transform namedSpawnPoint = FindChildRecursive(_weaponRoot, _projectileSpawnPointName);
-            if (namedSpawnPoint != null)
-            {
-                return namedSpawnPoint;
-            }
-
-            return _weaponRoot;
-        }
-
-        return transform;
-    }
-
-    private Transform FindChildRecursive(Transform root, string childName)
-    {
-        if (root == null || string.IsNullOrEmpty(childName))
-        {
-            return null;
-        }
-
-        if (root.name == childName)
-        {
-            return root;
-        }
-
-        for (int i = 0; i < root.childCount; i++)
-        {
-            Transform found = FindChildRecursive(root.GetChild(i), childName);
-            if (found != null)
-            {
-                return found;
-            }
-        }
-
-        return null;
-    }
-
-    private void TryComboAtk_New(AttackData_SO attackProfile)
-    {
-        string comboAnimKey = ResolveComboAnimKey(attackProfile);
-        bool lockMove = _autoWeaponCfg ? !CanMoveOnAtkByWeapon() : _lightAtkLockMove;
-        if (!TryStartAtk_New(
-                comboAnimKey,
-                Mathf.Max(0.01f, _lightAtkDur),
-                lockMove,
-                _lightAtkLockRotate,
-                false,
-                true))
-        {
-            return;
-        }
-
-        if (_actionCtrl == null)
-        {
-            ResetAttackAnimSpeed();
-            PlayAtk_New(comboAnimKey);
-        }
-
-        int comboCount = attackProfile != null && attackProfile.comboAnimKeys != null
-            ? attackProfile.comboAnimKeys.Length
-            : 0;
-
-        if (comboCount > 0)
-        {
-            _comboIndex = (_comboIndex + 1) % comboCount;
-        }
-
-        _comboResetRemain = ResolveComboResetTime(attackProfile);
-    }
-
-    private string ResolveComboAnimKey(AttackData_SO attackProfile)
-    {
-        if (attackProfile == null || attackProfile.comboAnimKeys == null || attackProfile.comboAnimKeys.Length == 0)
-        {
+        if (!Weapon.IsRangedWeapon(_currentWeapon))
             return _comboAtkTrig;
-        }
 
-        int comboSlot = _comboResetRemain > 0f ? _comboIndex : 0;
-        comboSlot = Mathf.Clamp(comboSlot, 0, attackProfile.comboAnimKeys.Length - 1);
-        string comboAnimKey = attackProfile.comboAnimKeys[comboSlot];
-        return string.IsNullOrEmpty(comboAnimKey)
-            ? _comboAtkTrig
-            : comboAnimKey;
+        if (profile != null && !string.IsNullOrEmpty(profile.attackAnimKey))
+            return profile.attackAnimKey;
+
+        return Weapon.GetAtkAnimName(_currentWeapon);
     }
 
-    private float ResolveComboResetTime(AttackData_SO attackProfile)
+    private float ResolveAttackDuration(AttackData_SO profile)
     {
-        if (attackProfile != null && attackProfile.comboResetTime > 0f)
-        {
-            return attackProfile.comboResetTime;
-        }
-
-        return 0.6f;
+        return profile != null && profile.attackTime > 0f ? profile.attackTime : _lightAtkDur;
     }
 
-    private void UpdateChargeReleaseInput(AttackInputState input, AttackData_SO attackProfile)
+    // ──────────────────── Targeting ────────────────────
+
+    private BasicAttackTargetInfo ResolveBasicAttackTarget(AttackData_SO profile, BasicAttackMode attackMode)
     {
-        if (input.isDown)
-        {
-            TryBeginChargeAttack();
-        }
+        if (_charCtrl == null) return default;
 
-        if (_isChargingBasicAttack && input.isHeld)
-        {
-            float maxChargeTime = ResolveMaxChargeTime(attackProfile);
-            _chargeHoldTime += Time.deltaTime;
-            if (maxChargeTime > 0f)
-            {
-                _chargeHoldTime = Mathf.Min(_chargeHoldTime, maxChargeTime);
-            }
+        bool isRanged = IsRangedAttackMode(attackMode);
+        float range = isRanged
+            ? CharResourceResolver.GetMaxAttackRange(gameObject)
+            : CharResourceResolver.GetAttackRange(gameObject);
+        if (range <= 0f)
+            range = isRanged ? 8f : 2f;
 
-            return;
-        }
+        BasicAttackTargetingMode targetingMode = ResolveTargetingMode(attackMode, profile);
+        float assistAngle = isRanged ? _rangedAssistAngle : _meleeAssistAngle;
+        bool preferLocked = ResolvePreferLockedTarget(attackMode, profile);
+        bool useLockedAim = attackMode != BasicAttackMode.RangedStraight;
 
-        if (_isChargingBasicAttack && input.isUp)
-        {
-            if (_chargeHoldTime >= ResolveMinChargeTime(attackProfile))
-            {
-                TryLightAtk_New(attackProfile, ResolveChargeReleaseAnimKey(attackProfile));
-            }
-
-            ResetChargeAttack();
-        }
+        return CharBasicAttackTargeting.Resolve(
+            gameObject, _charCtrl, targetingMode, range, assistAngle, preferLocked, useLockedAim);
     }
 
-    private void TryBeginChargeAttack()
-    {
-        if (_attackCooldownRemain > 0f)
-        {
-            return;
-        }
-
-        if (_actionCtrl != null &&
-            _actionCtrl.CurReq != null &&
-            _actionCtrl.State != CharActionState.Idle)
-        {
-            return;
-        }
-
-        _isChargingBasicAttack = true;
-        _chargeHoldTime = 0f;
-    }
-
-    private void ResetChargeAttack()
-    {
-        _isChargingBasicAttack = false;
-        _chargeHoldTime = 0f;
-    }
-
-    private float ResolveMaxChargeTime(AttackData_SO attackProfile)
-    {
-        return attackProfile != null && attackProfile.maxChargeTime > 0f
-            ? attackProfile.maxChargeTime
-            : 1.2f;
-    }
-
-    private float ResolveMinChargeTime(AttackData_SO attackProfile)
-    {
-        return attackProfile != null && attackProfile.minChargeTime > 0f
-            ? attackProfile.minChargeTime
-            : 0.15f;
-    }
-
-    private string ResolveChargeReleaseAnimKey(AttackData_SO attackProfile)
-    {
-        if (attackProfile != null && !string.IsNullOrEmpty(attackProfile.chargeReleaseAnimKey))
-        {
-            return attackProfile.chargeReleaseAnimKey;
-        }
-
-        return ResolveDefaultAttackAnimKey(attackProfile);
-    }
-
-    private bool IsRangedAttackMode(BasicAttackMode attackMode)
-    {
-        switch (attackMode)
-        {
-            case BasicAttackMode.RangedStraight:
-            case BasicAttackMode.RangedHoming:
-            case BasicAttackMode.RangedChargeRelease:
-                return true;
-
-            default:
-                return false;
-        }
-    }
-
-    private BasicAttackTargetingMode ResolveTargetingMode(BasicAttackMode attackMode, AttackData_SO attackProfile)
+    private BasicAttackTargetingMode ResolveTargetingMode(BasicAttackMode attackMode, AttackData_SO profile)
     {
         switch (attackMode)
         {
@@ -1133,12 +639,9 @@ public class CharWeaponCtrl : MonoBehaviour
 
             case BasicAttackMode.RangedHoming:
             case BasicAttackMode.RangedChargeRelease:
-                if (attackProfile != null && !attackProfile.enableSoftLock)
-                {
-                    return BasicAttackTargetingMode.FreeAim;
-                }
-
-                return BasicAttackTargetingMode.SoftLock;
+                return (profile != null && !profile.enableSoftLock)
+                    ? BasicAttackTargetingMode.FreeAim
+                    : BasicAttackTargetingMode.SoftLock;
 
             default:
                 return _useMeleeTargetAssist
@@ -1147,333 +650,349 @@ public class CharWeaponCtrl : MonoBehaviour
         }
     }
 
-    private bool ResolvePreferLockedTarget(BasicAttackMode attackMode, AttackData_SO attackProfile)
+    private bool ResolvePreferLockedTarget(BasicAttackMode attackMode, AttackData_SO profile)
     {
         switch (attackMode)
         {
             case BasicAttackMode.RangedStraight:
                 return false;
-
             case BasicAttackMode.RangedHoming:
             case BasicAttackMode.RangedChargeRelease:
-                if (attackProfile != null)
-                {
-                    return attackProfile.preferLockedTarget;
-                }
-
-                return _preferLockedTarget;
-
+                return profile != null ? profile.preferLockedTarget : _preferLockedTarget;
             default:
                 return false;
         }
     }
 
+    // ──────────────────── Face Direction & Aim ────────────────────
+
+    private bool ShouldForceFaceAttackDirection(BasicAttackTargetInfo targetInfo)
+    {
+        // 近战 combo 由 TryGetMeleeAttackAimDirection 驱动朝向，这里不重复处理
+        return _faceAttackDirection
+            && _charCtrl != null
+            && targetInfo.attackDirection.sqrMagnitude > 0.001f
+            && _resolvedAttackMode != BasicAttackMode.MeleeCombo;
+    }
+
     public bool ShouldSuppressMoveAnimation()
     {
-        if (_currentWeapon == WeaponType.Bow || _charCtrl == null || _charCtrl.Param == null)
-        {
+        if (Weapon.IsRangedWeapon(_currentWeapon) || _charCtrl == null || _charCtrl.Param == null)
             return false;
-        }
 
-        bool suppressRepeatMoveAnim =
-            _resolvedAttackMode == BasicAttackMode.MeleeRepeat &&
-            _suppressMoveAnimDuringMeleeRepeat;
-        bool suppressComboMoveAnim =
-            _resolvedAttackMode == BasicAttackMode.MeleeCombo &&
-            _suppressMoveAnimDuringMeleeCombo;
-        if (!suppressRepeatMoveAnim && !suppressComboMoveAnim)
-        {
+        if (UsesUpperBodyMoveAttackPresentation())
             return false;
-        }
 
-        bool canMoveDuringAttack = _autoWeaponCfg ? CanMoveOnAtkByWeapon() : !_lightAtkLockMove;
-        if (!canMoveDuringAttack || _charCtrl.Param.Locomotion.sqrMagnitude <= 0.01f)
-        {
+        if (_resolvedAttackMode != BasicAttackMode.MeleeCombo || !_suppressMoveAnimDuringMeleeCombo)
             return false;
-        }
+
+        AttackData_SO profile = ResolveAttackProfile();
+        if (!CanMoveWhileAttacking(profile) || _charCtrl.Param.Locomotion.sqrMagnitude <= 0.01f)
+            return false;
 
         return IsMeleeBasicAimPresentationActive();
+    }
+
+    private bool UsesUpperBodyMoveAttackPresentation()
+    {
+        if (Weapon.IsRangedWeapon(_currentWeapon)) return false;
+        AttackData_SO profile = ResolveAttackProfile();
+        if (profile == null) return false;
+        return CanMoveWhileAttacking(profile) && profile.useUpperBodyMoveAttackPresentation;
+    }
+
+    private bool CanMoveWhileAttacking(AttackData_SO profile)
+    {
+        return profile == null || profile.canMoveWhileAttack;
     }
 
     public bool TryGetMeleeAttackAimDirection(out Vector3 direction)
     {
         direction = Vector3.zero;
-        if (!_faceAttackDirection || _currentWeapon == WeaponType.Bow || _charCtrl == null || _charCtrl.Param == null)
-        {
+        if (!_faceAttackDirection || Weapon.IsRangedWeapon(_currentWeapon)
+            || _charCtrl == null || _charCtrl.Param == null)
             return false;
-        }
 
-        if (_resolvedAttackMode == BasicAttackMode.MeleeRepeat)
-        {
-            AttackInputState repeatInput = _charCtrl.Param.AttackState;
-            if (repeatInput.isDown || repeatInput.isHeld)
-            {
-                _meleeRepeatAimGraceRemain = Mathf.Max(_meleeRepeatAimGraceRemain, _meleeRepeatAimGraceTime);
-            }
-
-            bool isRepeatAimActive =
-                repeatInput.isDown ||
-                repeatInput.isHeld ||
-                _meleeRepeatAimGraceRemain > 0f ||
-                IsMeleeRepeatPresentationActive();
-
-            return TryResolveAimDirectionWhileActive(isRepeatAimActive, ref _meleeRepeatAimDirection, out direction);
-        }
-
-        if (_resolvedAttackMode == BasicAttackMode.MeleeCombo)
-        {
-            AttackInputState comboInput = _charCtrl.Param.AttackState;
-            if (comboInput.isDown)
-            {
-                _meleeComboAimGraceRemain = Mathf.Max(_meleeComboAimGraceRemain, _meleeComboAimGraceTime);
-            }
-
-            bool isComboAimActive =
-                comboInput.isDown ||
-                _meleeComboAimGraceRemain > 0f ||
-                HasActiveSelfAttackAction();
-
-            return TryResolveAimDirectionWhileActive(isComboAimActive, ref _meleeComboAimDirection, out direction);
-        }
-
-        return false;
-    }
-
-    private bool TryResolveAimDirectionWhileActive(bool isAimActive, ref Vector3 cachedAimDirection, out Vector3 direction)
-    {
-        direction = Vector3.zero;
-        Vector3 aimDirection = CharBasicAttackTargeting.ResolveAimDirection(gameObject, _charCtrl, false);
-        if (aimDirection.sqrMagnitude > 0.001f)
-        {
-            cachedAimDirection = aimDirection.normalized;
-        }
-
-        if (!isAimActive || cachedAimDirection.sqrMagnitude <= 0.001f)
-        {
+        if (_resolvedAttackMode != BasicAttackMode.MeleeCombo)
             return false;
-        }
 
-        direction = cachedAimDirection;
+        AttackInputState comboInput = _charCtrl.Param.AttackState;
+        if (comboInput.isDown)
+            _meleeComboAimGraceRemain = Mathf.Max(_meleeComboAimGraceRemain, _meleeComboAimGraceTime);
+
+        bool isActive = comboInput.isDown
+            || _meleeComboAimGraceRemain > 0f
+            || HasActiveSelfAttackAction();
+
+        Vector3 aimDir = CharBasicAttackTargeting.ResolveAimDirection(gameObject, _charCtrl, false);
+        if (aimDir.sqrMagnitude > 0.001f)
+            _meleeComboAimDirection = aimDir.normalized;
+
+        if (!isActive || _meleeComboAimDirection.sqrMagnitude <= 0.001f)
+            return false;
+
+        direction = _meleeComboAimDirection;
         return true;
     }
 
-    private bool ShouldForceFaceAttackDirection(BasicAttackTargetInfo targetInfo)
+    private void PlayAttackCastVfx(AttackData_SO profile, BasicAttackTargetInfo targetInfo)
     {
-        if (!_faceAttackDirection || _charCtrl == null || targetInfo.attackDirection.sqrMagnitude <= 0.001f)
-        {
-            return false;
-        }
-
-        if (_resolvedAttackMode == BasicAttackMode.MeleeRepeat ||
-            _resolvedAttackMode == BasicAttackMode.MeleeCombo)
-        {
-            return false;
-        }
-
-        if (ShouldSuppressMoveAnimation())
-        {
-            return true;
-        }
-
-        if (_resolvedAttackMode != BasicAttackMode.MeleeRepeat || !_suppressRepeatFaceWhileMoving)
-        {
-            return true;
-        }
-
-        bool canMoveDuringAttack = _autoWeaponCfg ? CanMoveOnAtkByWeapon() : !_lightAtkLockMove;
-        if (!canMoveDuringAttack)
-        {
-            return true;
-        }
-
-        CharParam charParam = _charCtrl.Param;
-        if (charParam == null)
-        {
-            return true;
-        }
-
-        return charParam.Locomotion.sqrMagnitude <= 0.01f;
-    }
-
-    private float ResolveAttackFaceLockDuration(AttackData_SO attackProfile)
-    {
-        float lockDuration = _attackFaceLockDuration;
-        if (_resolvedAttackMode == BasicAttackMode.MeleeRepeat && ShouldSuppressMoveAnimation())
-        {
-            lockDuration = Mathf.Max(lockDuration, ResolveAttackCycleDuration(attackProfile, _resolvedAttackMode));
-        }
-
-        return lockDuration;
-    }
-
-    private bool IsMeleeRepeatPresentationActive()
-    {
-        return HasActiveSelfAttackAction() ||
-               _attackCooldownRemain > 0f ||
-               _keepRepeatAttackAnimSpeed ||
-               _meleeRepeatHoldRestartBlockRemain > 0f;
-    }
-
-    private bool IsMeleeBasicAimPresentationActive()
-    {
-        if (_resolvedAttackMode == BasicAttackMode.MeleeRepeat)
-        {
-            return IsMeleeRepeatPresentationActive();
-        }
-
-        if (_resolvedAttackMode == BasicAttackMode.MeleeCombo)
-        {
-            return HasActiveSelfAttackAction() || _meleeComboAimGraceRemain > 0f;
-        }
-
-        return false;
-    }
-
-    private bool HasActiveSelfAttackAction()
-    {
-        return _actionCtrl != null &&
-               _actionCtrl.CurReq != null &&
-               _actionCtrl.CurReq.src == this &&
-               _actionCtrl.CurReq.type == CharActionType.Atk &&
-               _actionCtrl.State != CharActionState.Idle;
-    }
-
-    private void UpdateBlackBoardAttackTarget(BasicAttackTargetInfo targetInfo)
-    {
-        if (_blackBoard == null || !_blackBoard.Features.useTargeting)
+        if (profile == null || profile.attackCastVfx == null)
         {
             return;
         }
 
+        bool isRangedAttack = IsRangedAttackMode(_resolvedAttackMode);
+        Transform mount = ResolveAttackVfxMount(profile, isRangedAttack);
+        Vector3 direction = targetInfo.attackDirection.sqrMagnitude > 0.001f
+            ? targetInfo.attackDirection
+            : transform.forward;
+        direction.y = 0f;
+        if (direction.sqrMagnitude <= 0.001f)
+        {
+            direction = transform.forward;
+        }
+
+        Quaternion rotation = Quaternion.LookRotation(direction.normalized, Vector3.up);
+        SpawnAttackVfx(
+            profile.attackCastVfx,
+            mount,
+            mount != null ? mount.position : transform.position,
+            rotation,
+            profile.attackCastVfxOffset,
+            profile.attachAttackCastVfxToPoint,
+            profile.attackCastVfxLifetime);
+    }
+
+    private void SpawnAttackVfx(
+        GameObject prefab,
+        Transform mount,
+        Vector3 worldPosition,
+        Quaternion rotation,
+        Vector3 offset,
+        bool attachToMount,
+        float lifetime)
+    {
+        if (prefab == null)
+        {
+            return;
+        }
+
+        GameObject instance;
+        if (attachToMount && mount != null)
+        {
+            instance = Instantiate(prefab, worldPosition, rotation, mount);
+            instance.transform.localPosition += offset;
+        }
+        else
+        {
+            instance = Instantiate(prefab, worldPosition + rotation * offset, rotation);
+        }
+
+        if (lifetime > 0f)
+        {
+            Destroy(instance, lifetime);
+        }
+    }
+
+    private Transform ResolveAttackVfxMount(AttackData_SO profile, bool isRangedAttack)
+    {
+        if (profile == null)
+        {
+            return isRangedAttack ? ResolveProjectileSpawnPoint(null) : _weaponRoot;
+        }
+
+        string pointName = profile.attackVfxPointName;
+        if (!string.IsNullOrEmpty(pointName))
+        {
+            if (profile.preferOwnerAttackVfxPoint)
+            {
+                Transform ownerPoint = FindChildRecursive(transform, pointName);
+                if (ownerPoint != null)
+                {
+                    return ownerPoint;
+                }
+            }
+
+            if (_weaponRoot != null)
+            {
+                Transform weaponPoint = FindChildRecursive(_weaponRoot, pointName);
+                if (weaponPoint != null)
+                {
+                    return weaponPoint;
+                }
+            }
+
+            if (!profile.preferOwnerAttackVfxPoint)
+            {
+                Transform ownerPoint = FindChildRecursive(transform, pointName);
+                if (ownerPoint != null)
+                {
+                    return ownerPoint;
+                }
+            }
+        }
+
+        if (isRangedAttack)
+        {
+            return ResolveProjectileSpawnPoint(profile);
+        }
+
+        return _weaponRoot != null ? _weaponRoot : transform;
+    }
+
+    // ──────────────────── Cooldown ────────────────────
+
+    private void BeginAttackCooldown(float fallbackDuration)
+    {
+        float attackSpeed = CharResourceResolver.GetAttackSpeed(gameObject);
+        float explicitCooldown = CharResourceResolver.GetAttackCooldown(gameObject);
+
+        float cooldown;
+        if (explicitCooldown > 0f)
+            cooldown = explicitCooldown;
+        else if (attackSpeed > 0f)
+            cooldown = 1f / attackSpeed;
+        else
+            cooldown = Mathf.Max(0f, fallbackDuration);
+
+        _attackCooldownRemain = Mathf.Max(0f, cooldown);
+    }
+
+    // ──────────────────── Anim Speed ────────────────────
+
+    private void SetAttackAnimSpeed(float speed)
+    {
+        _activeAttackAnimSpeed = Mathf.Max(0.01f, speed);
+
+        Animator bodyAnim = _animCtrl != null ? _animCtrl.BodyAnim : null;
+        if (bodyAnim != null)
+            bodyAnim.speed = _activeAttackAnimSpeed;
+
+        if (_weaponAnimCtrl != null && _weaponAnimCtrl.Anim != null)
+            _weaponAnimCtrl.Anim.speed = _activeAttackAnimSpeed;
+    }
+
+    // ──────────────────── Blackboard ────────────────────
+
+    private void SyncBlackBoardWeapon()
+    {
+        if (_blackBoard == null || !_blackBoard.Features.useEquipment) return;
+
+        _blackBoard.Equipment.weaponType = _currentWeapon;
+        _blackBoard.Equipment.weaponRoot = _weaponRoot;
+        CharBlackBoardChangeMask mask = CharBlackBoardChangeMask.Equipment;
+        if (_blackBoard.Features.useTargeting)
+            mask |= CharBlackBoardChangeMask.Targeting;
+        _blackBoard.MarkRuntimeChanged(mask);
+    }
+
+    private void UpdateBlackBoardAttackTarget(BasicAttackTargetInfo targetInfo)
+    {
+        if (_blackBoard == null || !_blackBoard.Features.useTargeting) return;
         _blackBoard.Targeting.currentTarget = targetInfo.targetUnit;
         _blackBoard.Targeting.aimPoint = targetInfo.attackPoint;
         _blackBoard.MarkRuntimeChanged(CharBlackBoardChangeMask.Targeting);
     }
 
-    private bool CanReplaceActiveAttack(bool allowReplaceActiveAttack)
+    private void NotifyWeaponChanged()
     {
-        if (!allowReplaceActiveAttack || _actionCtrl == null || _actionCtrl.CurReq == null)
-        {
-            return false;
-        }
-
-        return _actionCtrl.CurReq.type == CharActionType.Atk && _actionCtrl.CurReq.src == this;
+        WeaponChanged?.Invoke(_currentWeapon);
     }
 
-    private float ResolveActionDuration(AttackData_SO attackProfile, BasicAttackMode attackMode)
-    {
-        float cycleDuration = ResolveAttackCycleDuration(attackProfile, attackMode);
-        if (attackMode == BasicAttackMode.MeleeRepeat)
-        {
-            return cycleDuration * Mathf.Clamp01(_meleeRepeatLockMoveFraction);
-        }
+    // ──────────────────── Helpers ────────────────────
 
-        return cycleDuration;
+    private static bool IsRangedAttackMode(BasicAttackMode mode)
+    {
+        return mode == BasicAttackMode.RangedStraight
+            || mode == BasicAttackMode.RangedHoming
+            || mode == BasicAttackMode.RangedChargeRelease;
     }
 
-    private float ResolveAttackCycleDuration(AttackData_SO attackProfile, BasicAttackMode attackMode)
+    private bool HasActiveSelfAttackAction()
     {
-        if (attackMode == BasicAttackMode.MeleeRepeat)
-        {
-            return ResolveAttackInterval(ResolveAttackDuration(attackProfile), attackMode);
-        }
-
-        return ResolveAttackDuration(attackProfile);
+        return _actionCtrl != null
+            && _actionCtrl.CurReq != null
+            && _actionCtrl.CurReq.src == this
+            && _actionCtrl.CurReq.type == CharActionType.Atk
+            && _actionCtrl.State != CharActionState.Idle;
     }
 
-    private void ApplyAttackAnimSpeed(AttackData_SO attackProfile, BasicAttackMode attackMode)
+    private bool CanReplaceActiveAttack(bool allowed)
     {
-        float nextSpeed = 1f;
-        if (attackMode == BasicAttackMode.MeleeRepeat && _currentWeapon != WeaponType.Bow)
-        {
-            float baseAnimDuration = ResolveAttackDuration(attackProfile);
-            float cycleDuration = ResolveAttackCycleDuration(attackProfile, attackMode);
-            if (baseAnimDuration > 0.01f && cycleDuration > 0.01f)
-            {
-                nextSpeed = Mathf.Clamp(baseAnimDuration / cycleDuration, 0.1f, 4f);
-            }
-        }
-
-        SetAttackAnimSpeed(nextSpeed);
+        return allowed
+            && _actionCtrl != null
+            && _actionCtrl.CurReq != null
+            && _actionCtrl.CurReq.type == CharActionType.Atk
+            && _actionCtrl.CurReq.src == this;
     }
 
-    private void SetAttackAnimSpeed(float speed)
+    private bool IsMeleeBasicAimPresentationActive()
     {
-        float finalSpeed = Mathf.Max(0.01f, speed);
-        _activeAttackAnimSpeed = finalSpeed;
+        return _resolvedAttackMode == BasicAttackMode.MeleeCombo
+            && (HasActiveSelfAttackAction() || _meleeComboAimGraceRemain > 0f);
+    }
 
+    // ──────────────────── Weapon Caching ────────────────────
+
+    private Animator FindWeaponAnimator(Transform root)
+    {
+        if (root == null) return null;
         Animator bodyAnim = _animCtrl != null ? _animCtrl.BodyAnim : null;
-        bool useBodySpeedParam =
-            _useBodyMeleeSpeedParam &&
-            _resolvedAttackMode == BasicAttackMode.MeleeRepeat &&
-            _currentWeapon != WeaponType.Bow &&
-            _animCtrl != null &&
-            _animCtrl.SetMeleeRepeatSpeed(finalSpeed);
-
-        if (bodyAnim != null)
+        Animator[] animators = root.GetComponentsInChildren<Animator>(true);
+        for (int i = 0; i < animators.Length; i++)
         {
-            bodyAnim.speed = useBodySpeedParam ? 1f : finalSpeed;
+            if (animators[i] != null && animators[i] != bodyAnim)
+                return animators[i];
         }
-
-        if (_weaponAnimCtrl != null && _weaponAnimCtrl.Anim != null)
-        {
-            _weaponAnimCtrl.Anim.speed = finalSpeed;
-        }
+        return null;
     }
 
-    private void ResetAttackAnimSpeed()
+    private void CacheWeaponAnimator()
     {
-        _activeAttackAnimSpeed = 1f;
-
-        if (_animCtrl != null)
-        {
-            _animCtrl.SetMeleeRepeatSpeed(1f);
-        }
-
-        Animator bodyAnim = _animCtrl != null ? _animCtrl.BodyAnim : null;
-        if (bodyAnim != null)
-        {
-            bodyAnim.speed = 1f;
-        }
-
-        if (_weaponAnimCtrl != null && _weaponAnimCtrl.Anim != null)
-        {
-            _weaponAnimCtrl.Anim.speed = 1f;
-        }
+        _weaponAnimator = FindWeaponAnimator(_weaponRoot) ?? FindWeaponAnimator(transform);
     }
 
-    private void UpdateRepeatAttackAnimSpeedState()
+    private void CacheWeaponAnimCtrl()
     {
-        if (!_keepRepeatAttackAnimSpeed)
+        if (_weaponAnimCtrl != null) return;
+
+        if (_weaponRoot != null)
         {
+            _weaponAnimCtrl = _weaponRoot.GetComponentInChildren<WeaponAnimCtrl>(true);
+            if (_weaponAnimCtrl == null)
+                _weaponAnimCtrl = _weaponRoot.gameObject.AddComponent<WeaponAnimCtrl>();
             return;
         }
 
-        if (_resolvedAttackMode != BasicAttackMode.MeleeRepeat || _currentWeapon == WeaponType.Bow)
+        if (_weaponAnimator != null)
         {
-            _keepRepeatAttackAnimSpeed = false;
-            ResetAttackAnimSpeed();
+            _weaponAnimCtrl = _weaponAnimator.GetComponent<WeaponAnimCtrl>()
+                ?? _weaponAnimator.GetComponentInParent<WeaponAnimCtrl>();
             return;
         }
 
-        if (_attackCooldownRemain > 0f)
+        _weaponAnimCtrl = GetComponentInChildren<WeaponAnimCtrl>(true);
+    }
+
+    private void CacheWeaponRoot()
+    {
+        if (_weaponVisualCtrl == null)
+            _weaponVisualCtrl = GetComponent<WeaponVisualCtrl>();
+
+        _weaponRoot = CharEquipmentResolver.ResolveWeaponRoot(
+            gameObject, _blackBoard, _weaponVisualCtrl, _animCtrl, _currentWeapon);
+    }
+
+    private static Transform FindChildRecursive(Transform root, string childName)
+    {
+        if (root == null || string.IsNullOrEmpty(childName)) return null;
+        if (root.name == childName) return root;
+        for (int i = 0; i < root.childCount; i++)
         {
-            return;
+            Transform found = FindChildRecursive(root.GetChild(i), childName);
+            if (found != null) return found;
         }
-
-        bool hasActiveAttackAction =
-            _actionCtrl != null &&
-            _actionCtrl.CurReq != null &&
-            _actionCtrl.CurReq.src == this &&
-            _actionCtrl.CurReq.type == CharActionType.Atk &&
-            _actionCtrl.State != CharActionState.Idle;
-
-        if (hasActiveAttackAction)
-        {
-            return;
-        }
-
-        _keepRepeatAttackAnimSpeed = false;
-        ResetAttackAnimSpeed();
+        return null;
     }
 }

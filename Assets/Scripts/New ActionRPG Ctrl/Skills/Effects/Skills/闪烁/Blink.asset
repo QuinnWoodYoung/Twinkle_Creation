@@ -15,7 +15,7 @@ MonoBehaviour:
   skillName: "\u6CD5\u529B\u95EA\u70C1"
   skillDescribe: 
   cooldown: 1
-  castAnimType: 3
+  castAnimType: 4
   castAnimDur: 0
   lockMoveOnCastAnim: 0
   lockRotateOnCastAnim: 0

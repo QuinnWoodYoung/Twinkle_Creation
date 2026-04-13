@@ -91,6 +91,15 @@ public class HealthBarUI : MonoBehaviour
             return;
         }
 
+        if (CharRuntimeResolver.IsDead(gameObject))
+        {
+            _lastHp = -1f;
+            _lastMaxHp = -1f;
+            _timeLeft = 0f;
+            _uiBar.gameObject.SetActive(false);
+            return;
+        }
+
         if (!CharResourceResolver.HasHealth(gameObject))
         {
             _lastHp = 0f;

@@ -23,6 +23,27 @@ MonoBehaviour:
   attackAnimKey: melee
   comboAnimKeys: []
   comboResetTime: 0.6
+  canMoveWhileAttack: 0
+  useUpperBodyMoveAttackPresentation: 0
+  useLogicHitResolution: 1
+  logicHitDelay: 0.08
+  allowLegacyCollisionDamage: 0
+  meleeLogicRange: 2
+  meleeHitRadius: 0.9
+  meleeHitAngle: 100
+  preferResolvedTarget: 1
+  allowMultiTargetMelee: 0
+  maxMeleeTargets: 1
+  targetAimHeight: 0.55
+  projectileUseLogicHit: 1
+  projectileHitRadius: 0.45
+  projectileVerticalTolerance: 1.2
+  projectileFollowGround: 1
+  projectileGroundOffset: 0.9
+  projectileGroundProbeHeight: 4
+  projectileGroundProbeDistance: 12
+  projectileImpactDistance: 0.35
+  projectileTargetHeightOffset: 0.1
   projectilePrefab: {fileID: 0}
   projectileSpeed: 10
   homingTurnSpeed: 18
@@ -31,3 +52,14 @@ MonoBehaviour:
   minChargeTime: 0.15
   maxChargeTime: 1.2
   chargeReleaseAnimKey: Attack
+  attackCastVfx: {fileID: 0}
+  attackHitVfx: {fileID: 0}
+  attackVfxPointName: BasicAttack VFX
+  projectileSpawnPointName: 
+  preferOwnerAttackVfxPoint: 1
+  attachAttackCastVfxToPoint: 0
+  attachAttackHitVfxToTarget: 0
+  attackCastVfxLifetime: 2
+  attackHitVfxLifetime: 2
+  attackCastVfxOffset: {x: 0, y: 0, z: 0}
+  attackHitVfxOffset: {x: 0, y: 0, z: 0}

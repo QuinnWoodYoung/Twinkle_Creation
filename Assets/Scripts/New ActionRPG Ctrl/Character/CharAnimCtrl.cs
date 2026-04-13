@@ -3,18 +3,32 @@
 [DisallowMultipleComponent]
 public class CharAnimCtrl : MonoBehaviour
 {
+    [System.Serializable]
+    private sealed class WeaponAnimBinding
+    {
+        public WeaponType weaponType = WeaponType.None;
+        public string layerName;
+        public string locomotionBoolName;
+    }
+
     [Header("Body Animator")]
     [SerializeField] private Animator _bodyAnim;
+
+    [Header("Locomotion")]
+    [Tooltip("角色是否拥有八向移动动画（xVelocity/zVelocity blend tree）。关闭后攻击时将锁定移动。")]
+    [SerializeField] private bool _has8DirLocomotion = true;
 
     [Header("Movement Params")]
     [SerializeField] private string _xVelParam = "xVelocity";
     [SerializeField] private string _zVelParam = "zVelocity";
     [SerializeField] private float _moveDamp = 0.1f;
 
+    [Header("Weapon Presentation")]
+    [Tooltip("每个角色自己配置：某种武器启用哪个攻击层，以及默认移动姿态使用哪个 Bool。")]
+    [SerializeField] private WeaponAnimBinding[] _weaponBindings;
+
     [Header("State Params")]
     [SerializeField] private string _deadBool = "dead";
-    [SerializeField] private string _swordBool = "isSword";
-    [SerializeField] private string _archerBool = "isArcher";
 
     [Header("Action Triggers")]
     [SerializeField] private string _atkTrig = "Attack";
@@ -23,9 +37,6 @@ public class CharAnimCtrl : MonoBehaviour
     [SerializeField] private string _buffCastTrig = "Buff";
     [SerializeField] private string _dashCastTrig = "Dash";
     [SerializeField] private string _hitTrig = "";
-
-    [Header("Attack Params")]
-    [SerializeField] private string _meleeRepeatSpeedParam = "meleeSpeed";
 
     [Header("Status Layer")]
     [SerializeField] private bool _autoStatusAnim = true;
@@ -44,6 +55,7 @@ public class CharAnimCtrl : MonoBehaviour
     private CharBlackBoard _blackBoard;
 
     public Animator BodyAnim => _bodyAnim;
+    public bool Has8DirLocomotion => _has8DirLocomotion;
 
     private void Awake()
     {
@@ -106,11 +118,6 @@ public class CharAnimCtrl : MonoBehaviour
         CacheBodyAnim();
     }
 
-    private void LateUpdate()
-    {
-        // Blackboard events are now the preferred sync path.
-    }
-
     public void SetMove(Vector3 moveDir, bool canMove, bool isLock, Transform lockedTarget)
     {
         Animator animator = _bodyAnim;
@@ -121,15 +128,23 @@ public class CharAnimCtrl : MonoBehaviour
 
         Vector3 animMoveDir = canMove ? moveDir : Vector3.zero;
         Vector3 animDir = animMoveDir.sqrMagnitude > 0.001f ? animMoveDir.normalized : Vector3.zero;
+        if (!_has8DirLocomotion)
+        {
+            // 非八向角色：始终面朝移动方向，只需驱动前进/停止，无侧移
+            SetFloatSafe(animator, _xVelParam, 0f);
+            SetFloatSafe(animator, _zVelParam, animDir.magnitude);
+            return;
+        }
 
-        // In free-look mode only the forward component matters.
-        if (!isLock && lockedTarget != null)
+        // 八向角色：非锁定时只写前进分量
+        if (!isLock || lockedTarget == null)
         {
             SetFloatSafe(animator, _xVelParam, 0f);
             SetFloatSafe(animator, _zVelParam, Vector3.Dot(animDir, transform.forward));
             return;
         }
 
+        // 八向角色 + 锁定：完整的侧移/前进 blend
         SetFloatSafe(animator, _xVelParam, Vector3.Dot(animDir, transform.right));
         SetFloatSafe(animator, _zVelParam, Vector3.Dot(animDir, transform.forward));
     }
@@ -158,18 +173,6 @@ public class CharAnimCtrl : MonoBehaviour
     {
         string finalTrig = ResolveCastTrig(trig);
         SetTriggerSafe(_bodyAnim, finalTrig);
-    }
-
-    public bool SetMeleeRepeatSpeed(float speed)
-    {
-        Animator animator = _bodyAnim;
-        if (!HasAnimatorCtrl(animator) || !HasParam(animator, _meleeRepeatSpeedParam, AnimatorControllerParameterType.Float))
-        {
-            return false;
-        }
-
-        animator.SetFloat(_meleeRepeatSpeedParam, Mathf.Max(0.01f, speed));
-        return true;
     }
 
     public void ApplyWeaponState(WeaponType weaponType)
@@ -240,10 +243,22 @@ public class CharAnimCtrl : MonoBehaviour
             return;
         }
 
-        string activeLayer = Weapon.GetAnimLayerName(weaponType);
-        for (int i = 0; i < Weapon.AnimLayers.Length; i++)
+        string[] weaponLayers = GetConfiguredWeaponLayerNames();
+        if (weaponLayers.Length == 0)
         {
-            string layerName = Weapon.AnimLayers[i];
+            return;
+        }
+
+        string activeLayer = ResolveWeaponLayerName(weaponType);
+
+        for (int i = 0; i < weaponLayers.Length; i++)
+        {
+            string layerName = weaponLayers[i];
+            if (string.IsNullOrEmpty(layerName) || IsDuplicateName(weaponLayers, i))
+            {
+                continue;
+            }
+
             int layerIndex = animator.GetLayerIndex(layerName);
             if (layerIndex < 0)
             {
@@ -261,17 +276,25 @@ public class CharAnimCtrl : MonoBehaviour
             return;
         }
 
-        bool isSword = weaponType == WeaponType.Sword || weaponType == WeaponType.Axe;
-        bool isArcher = weaponType == WeaponType.Bow;
-
-        if (HasParam(animator, _swordBool, AnimatorControllerParameterType.Bool))
+        string[] locomotionBools = GetConfiguredLocomotionBoolNames();
+        if (locomotionBools.Length == 0)
         {
-            animator.SetBool(_swordBool, isSword);
+            return;
         }
 
-        if (HasParam(animator, _archerBool, AnimatorControllerParameterType.Bool))
+        string activeBool = ResolveLocomotionBoolName(weaponType);
+        for (int i = 0; i < locomotionBools.Length; i++)
         {
-            animator.SetBool(_archerBool, isArcher);
+            string boolName = locomotionBools[i];
+            if (string.IsNullOrEmpty(boolName) || IsDuplicateName(locomotionBools, i))
+            {
+                continue;
+            }
+
+            if (HasParam(animator, boolName, AnimatorControllerParameterType.Bool))
+            {
+                animator.SetBool(boolName, boolName == activeBool);
+            }
         }
     }
 
@@ -379,6 +402,91 @@ public class CharAnimCtrl : MonoBehaviour
     private bool HasAnimatorCtrl(Animator animator)
     {
         return animator != null && animator.runtimeAnimatorController != null;
+    }
+
+    private string ResolveWeaponLayerName(WeaponType weaponType)
+    {
+        WeaponAnimBinding binding = FindWeaponBinding(weaponType);
+        return binding != null ? binding.layerName : string.Empty;
+    }
+
+    private string ResolveLocomotionBoolName(WeaponType weaponType)
+    {
+        WeaponAnimBinding binding = FindWeaponBinding(weaponType);
+        return binding != null ? binding.locomotionBoolName : string.Empty;
+    }
+
+    private WeaponAnimBinding FindWeaponBinding(WeaponType weaponType)
+    {
+        if (_weaponBindings == null)
+        {
+            return null;
+        }
+
+        for (int i = 0; i < _weaponBindings.Length; i++)
+        {
+            WeaponAnimBinding binding = _weaponBindings[i];
+            if (binding != null && binding.weaponType == weaponType)
+            {
+                return binding;
+            }
+        }
+
+        return null;
+    }
+
+    private string[] GetConfiguredWeaponLayerNames()
+    {
+        if (_weaponBindings == null || _weaponBindings.Length == 0)
+        {
+            return new string[0];
+        }
+
+        System.Collections.Generic.List<string> result = new System.Collections.Generic.List<string>(_weaponBindings.Length);
+        for (int i = 0; i < _weaponBindings.Length; i++)
+        {
+            WeaponAnimBinding binding = _weaponBindings[i];
+            if (binding != null && !string.IsNullOrEmpty(binding.layerName))
+            {
+                result.Add(binding.layerName);
+            }
+        }
+
+        return result.ToArray();
+    }
+
+    private string[] GetConfiguredLocomotionBoolNames()
+    {
+        if (_weaponBindings == null || _weaponBindings.Length == 0)
+        {
+            return new string[0];
+        }
+
+        System.Collections.Generic.List<string> result = new System.Collections.Generic.List<string>(_weaponBindings.Length);
+        for (int i = 0; i < _weaponBindings.Length; i++)
+        {
+            WeaponAnimBinding binding = _weaponBindings[i];
+            if (binding != null && !string.IsNullOrEmpty(binding.locomotionBoolName))
+            {
+                result.Add(binding.locomotionBoolName);
+            }
+        }
+
+        return result.ToArray();
+    }
+
+    private bool IsDuplicateName(string[] names, int index)
+    {
+        string name = names[index];
+        for (int i = 0; i < index; i++)
+        {
+            if (names[i] == name)
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private void CacheRefs()

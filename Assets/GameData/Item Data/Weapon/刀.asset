@@ -20,7 +20,7 @@ MonoBehaviour:
   Stackable: 0
   weaponPrefab: {fileID: 105760, guid: 5602198f2b72c7f4bbc7c78fb1f51800, type: 3}
   weaponData: {fileID: 11400000, guid: d5d5ece1d622e0540aac011e71aaeaca, type: 2}
-  weaponType: 1
+  weaponType: 0
   useWeaponAttackProfile: 1
   weaponSlotType: 0
   itemData: {fileID: 0}

@@ -1,0 +1,78 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!1001 &3627352406388825909
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    m_TransformParent: {fileID: 0}
+    m_Modifications:
+    - target: {fileID: 4028080620623409906, guid: 84b3b2b1daadd6144b2028882c2d80c3, type: 3}
+      propertyPath: m_Name
+      value: Elf Archer_Weapon
+      objectReference: {fileID: 0}
+    - target: {fileID: 4372235849511004232, guid: 84b3b2b1daadd6144b2028882c2d80c3, type: 3}
+      propertyPath: m_RootOrder
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4372235849511004232, guid: 84b3b2b1daadd6144b2028882c2d80c3, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4372235849511004232, guid: 84b3b2b1daadd6144b2028882c2d80c3, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4372235849511004232, guid: 84b3b2b1daadd6144b2028882c2d80c3, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4372235849511004232, guid: 84b3b2b1daadd6144b2028882c2d80c3, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 4372235849511004232, guid: 84b3b2b1daadd6144b2028882c2d80c3, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4372235849511004232, guid: 84b3b2b1daadd6144b2028882c2d80c3, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4372235849511004232, guid: 84b3b2b1daadd6144b2028882c2d80c3, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4372235849511004232, guid: 84b3b2b1daadd6144b2028882c2d80c3, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4372235849511004232, guid: 84b3b2b1daadd6144b2028882c2d80c3, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4372235849511004232, guid: 84b3b2b1daadd6144b2028882c2d80c3, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 7659885758796870194, guid: 84b3b2b1daadd6144b2028882c2d80c3, type: 3}
+      propertyPath: m_Controller
+      value: 
+      objectReference: {fileID: 9100000, guid: f143dd247701c5746be29027563eaa9f, type: 2}
+    - target: {fileID: 7659885758796870194, guid: 84b3b2b1daadd6144b2028882c2d80c3, type: 3}
+      propertyPath: m_WarningMessage
+      value: "\nBinding warning: Some generic clip(s) animate transforms that are
+        already bound by a Humanoid avatar. These transforms can only be changed
+        by Humanoid clips.\n\tTransform 'Bip001 R Finger32'\n\tTransform 'Bip001
+        R Clavicle'\n\tTransform 'Bip001 L Finger32'\n\tTransform 'Bip001 R UpperArm'\n\tTransform
+        'Bip001 R Finger2'\n\tTransform 'Bip001 R Finger12'\n\tTransform 'Bip001
+        L Finger12'\n\tTransform 'Bip001 Head'\n\tTransform 'Bip001 Spine1'\n\tTransform
+        'Bip001 R Finger11'\n\tand more ...\n\tFrom animation clip 'Elf Archer_idle'\n\tFrom
+        animation clip 'Elf Archer_display'\n\tFrom animation clip 'Elf Archer_idle'\n\tFrom
+        animation clip 'Elf Archer_attack'\n\tFrom animation clip 'Elf Archer_idle'\n\tFrom
+        animation clip 'Elf Archer_skill2a'\n\tFrom animation clip 'Elf Archer_idle'\n\tFrom
+        animation clip 'Elf Archer_skill2b'\n\tFrom animation clip 'Elf Archer_idle'\n\tFrom
+        animation clip 'Elf Archer_hit'\n\tand more ..."
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+  m_SourcePrefab: {fileID: 100100000, guid: 84b3b2b1daadd6144b2028882c2d80c3, type: 3}
