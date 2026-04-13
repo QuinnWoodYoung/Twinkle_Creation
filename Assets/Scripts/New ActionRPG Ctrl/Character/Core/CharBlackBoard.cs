@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.Serialization;
 
 [System.Serializable]
 // Feature toggles describe which gameplay modules are enabled for this unit.
@@ -75,9 +76,9 @@ public sealed class CharResourceSlice
     public bool hasHealth = true;
     public float hp = 100f;
     public float maxHp = 100f;
-    public bool hasMana;
-    public float mp;
-    public float maxMp;
+    [FormerlySerializedAs("hasMana")] public bool hasEnergy;
+    [FormerlySerializedAs("mp")] public float energy;
+    [FormerlySerializedAs("maxMp")] public float maxEnergy;
 }
 
 [System.Serializable]
@@ -85,7 +86,7 @@ public sealed class CharCombatSlice
 {
     public float attackPower = 10f;
     public float criticalAttackPower = 10f;
-    public float attackSpeed = 1f;
+    [FormerlySerializedAs("attackSpeed")] public float rangedAttackSpeed = 1f;
     public float attackSpeedMul = 1f;
     public float attackRange = 1.5f;
     public float maxAttackRange = 3f;

@@ -122,7 +122,10 @@ Primary files:
 Observed behavior:
 
 - `CharWeaponCtrl` owns current weapon type, attack input handling, weapon-specific attack movement rules, projectile spawn for bow, and binding to the active weapon root.
-- Normal attacks are currently unified around the trigger name `Attack`; weapon differences are expressed mainly through body layer selection and whether attack allows movement.
+- Normal attacks are already in a usable state and should be treated as the current baseline, not as a system that needs default redesign.
+- The current basic attack flow covers melee combo plus ranged straight, homing, and charge-release variants through `AttackData_SO` and `CharWeaponCtrl`.
+- Hit presentation is data-driven through attack-profile fields such as cast VFX, hit VFX, targeting, projectile settings, and movement permissions.
+- Normal attacks are currently unified around the trigger name `Attack`; weapon differences are expressed mainly through body layer selection, attack mode, profile data, and whether attack allows movement.
 - Weapon-prefab animation is delegated to `WeaponAnimCtrl`.
 - `WeaponAnimCtrl` binds to an owner and weapon type at runtime, then plays trigger/state names on the weapon prefab's own Animator.
 - The weapon system expects the actual weapon prefab to carry its own Animator and optional `WeaponAnimCtrl`.
@@ -131,6 +134,10 @@ Current gameplay rule already encoded:
 
 - Axe attacks lock movement.
 - Sword and bow attacks can move while attacking.
+
+Working guidance:
+
+- Unless a task explicitly asks for a basic-attack redesign, preserve the current attack flow and limit changes to focused fixes such as timing, targeting, damage resolution, animation hookup, or VFX/data configuration.
 
 ## Skill Runtime
 

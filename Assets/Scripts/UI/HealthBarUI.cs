@@ -10,10 +10,14 @@ public class HealthBarUI : MonoBehaviour
 
     private float _timeLeft;
     private Image _healthSlider;
+    private Transform _energyContainer;
+    private Image _energySlider;
     private Transform _uiBar;
     private Transform _cam;
     private float _lastHp = -1f;
     private float _lastMaxHp = -1f;
+    private float _lastEnergy = -1f;
+    private float _lastMaxEnergy = -1f;
 
     private void OnEnable()
     {
@@ -29,6 +33,20 @@ public class HealthBarUI : MonoBehaviour
 
             _uiBar = Instantiate(healthUIPrefab, canvas.transform).transform;
             _healthSlider = _uiBar.GetChild(0).GetComponent<Image>();
+            if (_uiBar.childCount > 1)
+            {
+                _energyContainer = _uiBar.GetChild(1);
+                if (_energyContainer != null && _energyContainer.childCount > 0)
+                {
+                    _energySlider = _energyContainer.GetChild(0).GetComponent<Image>();
+                }
+            }
+
+            if (_energyContainer != null)
+            {
+                _energyContainer.gameObject.SetActive(false);
+            }
+
             _uiBar.gameObject.SetActive(alwaysVisible);
             break;
         }
@@ -77,6 +95,10 @@ public class HealthBarUI : MonoBehaviour
         if (_timeLeft <= 0f && !alwaysVisible)
         {
             _uiBar.gameObject.SetActive(false);
+            if (_energyContainer != null)
+            {
+                _energyContainer.gameObject.SetActive(false);
+            }
         }
         else
         {
@@ -95,8 +117,14 @@ public class HealthBarUI : MonoBehaviour
         {
             _lastHp = -1f;
             _lastMaxHp = -1f;
+            _lastEnergy = -1f;
+            _lastMaxEnergy = -1f;
             _timeLeft = 0f;
             _uiBar.gameObject.SetActive(false);
+            if (_energyContainer != null)
+            {
+                _energyContainer.gameObject.SetActive(false);
+            }
             return;
         }
 
@@ -105,23 +133,36 @@ public class HealthBarUI : MonoBehaviour
             _lastHp = 0f;
             _lastMaxHp = 0f;
             _uiBar.gameObject.SetActive(false);
+            if (_energyContainer != null)
+            {
+                _energyContainer.gameObject.SetActive(false);
+            }
             return;
         }
 
         float hitPoint = CharResourceResolver.GetHitPoint(gameObject);
         float maxHitPoint = CharResourceResolver.GetMaxHitPoint(gameObject);
+        float energy = CharResourceResolver.GetEnergy(gameObject);
+        float maxEnergy = CharResourceResolver.GetMaxEnergy(gameObject);
 
         if (!force &&
             Mathf.Approximately(hitPoint, _lastHp) &&
-            Mathf.Approximately(maxHitPoint, _lastMaxHp))
+            Mathf.Approximately(maxHitPoint, _lastMaxHp) &&
+            Mathf.Approximately(energy, _lastEnergy) &&
+            Mathf.Approximately(maxEnergy, _lastMaxEnergy))
         {
             return;
         }
 
-        ApplyHealthBar(hitPoint, maxHitPoint, false);
+        ApplyBars(hitPoint, maxHitPoint, energy, maxEnergy, false);
     }
 
     private void ApplyHealthBar(float hitPoint, float maxHitPoint, bool refreshVisibility)
+    {
+        ApplyBars(hitPoint, maxHitPoint, 0f, 0f, refreshVisibility);
+    }
+
+    private void ApplyBars(float hitPoint, float maxHitPoint, float energy, float maxEnergy, bool refreshVisibility)
     {
         if (_uiBar == null || _healthSlider == null)
         {
@@ -130,20 +171,41 @@ public class HealthBarUI : MonoBehaviour
 
         _lastHp = hitPoint;
         _lastMaxHp = maxHitPoint;
+        _lastEnergy = energy;
+        _lastMaxEnergy = maxEnergy;
 
         if (maxHitPoint <= 0f)
         {
             _healthSlider.fillAmount = 0f;
             _uiBar.gameObject.SetActive(false);
+            if (_energyContainer != null)
+            {
+                _energyContainer.gameObject.SetActive(false);
+            }
             return;
         }
 
         _healthSlider.fillAmount = Mathf.Clamp01(hitPoint / maxHitPoint);
+        bool hasEnergy = _energyContainer != null && _energySlider != null && maxEnergy > 0f;
+        if (hasEnergy)
+        {
+            _energySlider.fillAmount = Mathf.Clamp01(energy / maxEnergy);
+        }
 
         if (alwaysVisible || refreshVisibility || !Mathf.Approximately(hitPoint, maxHitPoint) || hitPoint <= 0f)
         {
             _uiBar.gameObject.SetActive(true);
+            if (_energyContainer != null)
+            {
+                _energyContainer.gameObject.SetActive(hasEnergy);
+            }
             _timeLeft = visibleTime;
+            return;
+        }
+
+        if (_energyContainer != null)
+        {
+            _energyContainer.gameObject.SetActive(alwaysVisible && hasEnergy);
         }
     }
 }

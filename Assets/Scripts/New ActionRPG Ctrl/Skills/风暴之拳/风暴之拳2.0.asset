@@ -15,6 +15,7 @@ MonoBehaviour:
   skillName: 
   skillDescribe: 
   cooldown: 2
+  energyCost: 10
   castAnimType: 0
   castAnimDur: 0
   lockMoveOnCastAnim: 0

@@ -81,6 +81,119 @@ public static class CharResourceResolver
         return stateManager != null ? stateManager.MaxHitPoint : 0f;
     }
 
+    public static bool HasEnergy(GameObject obj)
+    {
+        GameObject unit = CharRelationResolver.NormalizeUnit(obj);
+        if (unit == null)
+        {
+            return false;
+        }
+
+        CharBlackBoard blackBoard = unit.GetComponent<CharBlackBoard>();
+        if (blackBoard != null)
+        {
+            return blackBoard.Features.useResources &&
+                blackBoard.Resources.hasEnergy;
+        }
+
+        StateManager stateManager = unit.GetComponent<StateManager>();
+        return stateManager != null && stateManager.MaxEnergy > 0f;
+    }
+
+    public static float GetEnergy(GameObject obj)
+    {
+        GameObject unit = CharRelationResolver.NormalizeUnit(obj);
+        if (unit == null)
+        {
+            return 0f;
+        }
+
+        CharBlackBoard blackBoard = unit.GetComponent<CharBlackBoard>();
+        if (blackBoard != null)
+        {
+            return blackBoard.Features.useResources && blackBoard.Resources.hasEnergy
+                ? blackBoard.Resources.energy
+                : 0f;
+        }
+
+        StateManager stateManager = unit.GetComponent<StateManager>();
+        return stateManager != null ? stateManager.Energy : 0f;
+    }
+
+    public static float GetMaxEnergy(GameObject obj)
+    {
+        GameObject unit = CharRelationResolver.NormalizeUnit(obj);
+        if (unit == null)
+        {
+            return 0f;
+        }
+
+        CharBlackBoard blackBoard = unit.GetComponent<CharBlackBoard>();
+        if (blackBoard != null)
+        {
+            return blackBoard.Features.useResources && blackBoard.Resources.hasEnergy
+                ? blackBoard.Resources.maxEnergy
+                : 0f;
+        }
+
+        StateManager stateManager = unit.GetComponent<StateManager>();
+        return stateManager != null ? stateManager.MaxEnergy : 0f;
+    }
+
+    public static bool HasEnoughEnergy(GameObject obj, float energyCost)
+    {
+        if (energyCost <= 0f)
+        {
+            return true;
+        }
+
+        if (!HasEnergy(obj))
+        {
+            return false;
+        }
+
+        return GetEnergy(obj) >= energyCost;
+    }
+
+    public static bool TrySpendEnergy(GameObject obj, float energyCost)
+    {
+        if (energyCost <= 0f)
+        {
+            return true;
+        }
+
+        GameObject unit = CharRelationResolver.NormalizeUnit(obj);
+        if (unit == null)
+        {
+            return false;
+        }
+
+        StateManager stateManager = unit.GetComponent<StateManager>();
+        if (stateManager != null && stateManager.enabled)
+        {
+            if (stateManager.MaxEnergy <= 0f || stateManager.Energy < energyCost)
+            {
+                return false;
+            }
+
+            stateManager.Energy -= Mathf.Max(0f, energyCost);
+            return true;
+        }
+
+        CharBlackBoard blackBoard = unit.GetComponent<CharBlackBoard>();
+        if (blackBoard == null ||
+            !blackBoard.Features.useResources ||
+            !blackBoard.Resources.hasEnergy ||
+            blackBoard.Resources.energy < energyCost)
+        {
+            return false;
+        }
+
+        blackBoard.Resources.energy = Mathf.Max(0f, blackBoard.Resources.energy - Mathf.Max(0f, energyCost));
+        blackBoard.MarkRuntimeChanged(CharBlackBoardChangeMask.Resources);
+        return true;
+    }
+
     public static float GetBasicAttackDamage(GameObject obj)
     {
         GameObject unit = CharRelationResolver.NormalizeUnit(obj);
@@ -115,7 +228,7 @@ public static class CharResourceResolver
         return 0f;
     }
 
-    public static float GetAttackSpeed(GameObject obj)
+    public static float GetRangedAttackSpeed(GameObject obj)
     {
         GameObject unit = CharRelationResolver.NormalizeUnit(obj);
         if (unit == null)
@@ -131,7 +244,7 @@ public static class CharResourceResolver
                 return 0f;
             }
 
-            float finalAttackSpeed = blackBoard.Combat.attackSpeed;
+            float finalAttackSpeed = blackBoard.Combat.rangedAttackSpeed;
             if (blackBoard.Combat.attackSpeedMul > 0f)
             {
                 finalAttackSpeed *= blackBoard.Combat.attackSpeedMul;
@@ -142,8 +255,13 @@ public static class CharResourceResolver
 
         AttackData_SO attackData = GetAttackData(unit);
         return attackData != null
-            ? Mathf.Max(attackData.attackSpeed, 0f)
+            ? Mathf.Max(attackData.rangedAttackSpeed, 0f)
             : 0f;
+    }
+
+    public static float GetAttackSpeed(GameObject obj)
+    {
+        return GetRangedAttackSpeed(obj);
     }
 
     public static float GetAttackRange(GameObject obj)

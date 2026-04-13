@@ -521,10 +521,13 @@ MonoBehaviour:
   _resourceTemplate: {fileID: 0}
   _startHp: -1
   _maxHp: -1
+  _hasEnergy: 1
+  _startEnergy: -1
+  _maxEnergy: -1
   _attackTemplate: {fileID: 0}
   _attackPower: -1
   _criticalAttackPower: -1
-  _attackSpeed: -1
+  _rangedAttackSpeed: -1
   _attackRange: -1
   _maxAttackRange: -1
   _attackCooldown: -1
@@ -588,13 +591,13 @@ MonoBehaviour:
     hasHealth: 1
     hp: 100
     maxHp: 100
-    hasMana: 0
-    mp: 0
-    maxMp: 0
+    hasEnergy: 0
+    energy: 0
+    maxEnergy: 0
   _combat:
     attackPower: 10
     criticalAttackPower: 10
-    attackSpeed: 1
+    rangedAttackSpeed: 1
     attackSpeedMul: 1
     attackRange: 1.5
     maxAttackRange: 3
@@ -1039,7 +1042,7 @@ Transform:
   - {fileID: 442666739}
   - {fileID: 1225723489}
   m_Father: {fileID: 0}
-  m_RootOrder: 7
+  m_RootOrder: 8
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &107338776
 GameObject:
@@ -4067,13 +4070,13 @@ MonoBehaviour:
     hasHealth: 1
     hp: 100
     maxHp: 100
-    hasMana: 0
-    mp: 0
-    maxMp: 0
+    hasEnergy: 0
+    energy: 0
+    maxEnergy: 0
   _combat:
     attackPower: 10
     criticalAttackPower: 10
-    attackSpeed: 1
+    rangedAttackSpeed: 1
     attackSpeedMul: 1
     attackRange: 1.5
     maxAttackRange: 3
@@ -8839,10 +8842,13 @@ MonoBehaviour:
   _resourceTemplate: {fileID: 0}
   _startHp: -1
   _maxHp: -1
+  _hasEnergy: 1
+  _startEnergy: -1
+  _maxEnergy: -1
   _attackTemplate: {fileID: 0}
   _attackPower: -1
   _criticalAttackPower: -1
-  _attackSpeed: -1
+  _rangedAttackSpeed: -1
   _attackRange: -1
   _maxAttackRange: -1
   _attackCooldown: -1
@@ -8906,13 +8912,13 @@ MonoBehaviour:
     hasHealth: 1
     hp: 100
     maxHp: 100
-    hasMana: 0
-    mp: 0
-    maxMp: 0
+    hasEnergy: 0
+    energy: 0
+    maxEnergy: 0
   _combat:
     attackPower: 10
     criticalAttackPower: 10
-    attackSpeed: 1
+    rangedAttackSpeed: 1
     attackSpeedMul: 1
     attackRange: 1.5
     maxAttackRange: 3
@@ -9357,7 +9363,7 @@ Transform:
   - {fileID: 2133570685}
   - {fileID: 450745572}
   m_Father: {fileID: 0}
-  m_RootOrder: 6
+  m_RootOrder: 7
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1148189473
 GameObject:
@@ -11743,10 +11749,13 @@ MonoBehaviour:
   _resourceTemplate: {fileID: 0}
   _startHp: -1
   _maxHp: -1
+  _hasEnergy: 1
+  _startEnergy: -1
+  _maxEnergy: -1
   _attackTemplate: {fileID: 0}
   _attackPower: -1
   _criticalAttackPower: -1
-  _attackSpeed: -1
+  _rangedAttackSpeed: -1
   _attackRange: -1
   _maxAttackRange: -1
   _attackCooldown: -1
@@ -11779,8 +11788,8 @@ MonoBehaviour:
     netId: 
     isPlayerControlled: 1
     team: {fileID: 1432528795}
-    teamId: 0
-    teamSide: 0
+    teamId: 1
+    teamSide: 1
   _transformState:
     position: {x: 0, y: 0, z: 0}
     forward: {x: 0, y: 0, z: 1}
@@ -11810,13 +11819,13 @@ MonoBehaviour:
     hasHealth: 1
     hp: 100
     maxHp: 100
-    hasMana: 0
-    mp: 0
-    maxMp: 0
+    hasEnergy: 0
+    energy: 0
+    maxEnergy: 0
   _combat:
     attackPower: 10
     criticalAttackPower: 10
-    attackSpeed: 1
+    rangedAttackSpeed: 1
     attackSpeedMul: 1
     attackRange: 1.5
     maxAttackRange: 3
@@ -11997,7 +12006,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 6c3018550b012e2449e1073c8a3e6d6d, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  side: 0
+  side: 1
   useExplicitTeamId: 0
   teamId: -1
 --- !u!195 &1432528796
@@ -12223,7 +12232,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: f463bdc4fe68e6f479c54fb23562cecb, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  isPlayerControlled: 1
+  isPlayerControlled: 0
   charCtrl: {fileID: 0}
 --- !u!143 &1432528807
 CharacterController:
@@ -12261,7 +12270,7 @@ Transform:
   - {fileID: 311726751}
   - {fileID: 1523147857}
   m_Father: {fileID: 0}
-  m_RootOrder: 5
+  m_RootOrder: 6
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1436693741 stripped
 GameObject:
@@ -12472,7 +12481,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 8951593624410888271, guid: d75e451339b505244b236772a70dd92c, type: 3}
       propertyPath: m_IsActive
-      value: 0
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 8951593624410888271, guid: d75e451339b505244b236772a70dd92c, type: 3}
       propertyPath: m_TagString
@@ -13421,13 +13430,13 @@ MonoBehaviour:
     hasHealth: 1
     hp: 100
     maxHp: 100
-    hasMana: 0
-    mp: 0
-    maxMp: 0
+    hasEnergy: 0
+    energy: 0
+    maxEnergy: 0
   _combat:
     attackPower: 10
     criticalAttackPower: 10
-    attackSpeed: 1
+    rangedAttackSpeed: 1
     attackSpeedMul: 1
     attackRange: 1.5
     maxAttackRange: 3
@@ -13552,10 +13561,13 @@ MonoBehaviour:
   _resourceTemplate: {fileID: 0}
   _startHp: -1
   _maxHp: -1
+  _hasEnergy: 1
+  _startEnergy: -1
+  _maxEnergy: -1
   _attackTemplate: {fileID: 0}
   _attackPower: -1
   _criticalAttackPower: -1
-  _attackSpeed: -1
+  _rangedAttackSpeed: -1
   _attackRange: -1
   _maxAttackRange: -1
   _attackCooldown: -1
@@ -16406,7 +16418,7 @@ SphereCollider:
   m_Enabled: 0
   serializedVersion: 2
   m_Radius: 0.6335617
-  m_Center: {x: -0.0000056512904, y: -0.0000067932497, z: 0.82083607}
+  m_Center: {x: -0.0000056512904, y: 0.18, z: 0.82083607}
 --- !u!1001 &2105579172
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -19401,7 +19413,7 @@ Transform:
   - {fileID: 547502427}
   - {fileID: 1017958841}
   m_Father: {fileID: 0}
-  m_RootOrder: 8
+  m_RootOrder: 5
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!114 &2869916834597007312
 MonoBehaviour:
@@ -19546,10 +19558,13 @@ MonoBehaviour:
   _resourceTemplate: {fileID: 0}
   _startHp: -1
   _maxHp: -1
+  _hasEnergy: 1
+  _startEnergy: -1
+  _maxEnergy: -1
   _attackTemplate: {fileID: 0}
   _attackPower: -1
   _criticalAttackPower: -1
-  _attackSpeed: -1
+  _rangedAttackSpeed: -1
   _attackRange: -1
   _maxAttackRange: -1
   _attackCooldown: -1
@@ -19838,13 +19853,13 @@ MonoBehaviour:
     hasHealth: 1
     hp: 100
     maxHp: 100
-    hasMana: 0
-    mp: 0
-    maxMp: 0
+    hasEnergy: 0
+    energy: 0
+    maxEnergy: 0
   _combat:
     attackPower: 10
     criticalAttackPower: 10
-    attackSpeed: 1
+    rangedAttackSpeed: 1
     attackSpeedMul: 1
     attackRange: 1.5
     maxAttackRange: 3
@@ -19901,7 +19916,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 83c991da92bbdda44aaf8edf65f94e23, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  _weaponItem: {fileID: 11400000, guid: 3fe4d7b83eb64c0d839b11114e3f9167, type: 2}
+  _weaponItem: {fileID: 11400000, guid: 4024847d515033f4c9d51a099a1089a2, type: 2}
   _equipOnStart: 1
   _equipDelay: 0
 --- !u!1 &2869916834896825082

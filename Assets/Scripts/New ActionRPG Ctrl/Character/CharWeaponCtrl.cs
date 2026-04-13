@@ -845,14 +845,20 @@ public class CharWeaponCtrl : MonoBehaviour
 
     private void BeginAttackCooldown(float fallbackDuration)
     {
-        float attackSpeed = CharResourceResolver.GetAttackSpeed(gameObject);
         float explicitCooldown = CharResourceResolver.GetAttackCooldown(gameObject);
+        bool useRangedAttackSpeed =
+            _resolvedAttackMode == BasicAttackMode.RangedStraight ||
+            _resolvedAttackMode == BasicAttackMode.RangedHoming ||
+            _resolvedAttackMode == BasicAttackMode.RangedChargeRelease;
+        float rangedAttackSpeed = useRangedAttackSpeed
+            ? CharResourceResolver.GetRangedAttackSpeed(gameObject)
+            : 0f;
 
         float cooldown;
         if (explicitCooldown > 0f)
             cooldown = explicitCooldown;
-        else if (attackSpeed > 0f)
-            cooldown = 1f / attackSpeed;
+        else if (rangedAttackSpeed > 0f)
+            cooldown = 1f / rangedAttackSpeed;
         else
             cooldown = Mathf.Max(0f, fallbackDuration);
 

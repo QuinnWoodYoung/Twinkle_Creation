@@ -131,6 +131,11 @@ public class CharSkillCtrl : MonoBehaviour
             return;
         }
 
+        if (!CharResourceResolver.HasEnoughEnergy(gameObject, currentSkill.energyCost))
+        {
+            return;
+        }
+
         TargetInfo info = TargetingUtil.Collect(_charCtrl, groundLayer);
         CastContext context = new CastContext(gameObject, info);
 
@@ -318,6 +323,11 @@ public class CharSkillCtrl : MonoBehaviour
 
         if (skill.Activate(context))
         {
+            if (!CharResourceResolver.TrySpendEnergy(gameObject, skill.energyCost))
+            {
+                return;
+            }
+
             _skillCooldowns[skillIndex] = skill.cooldown;
             SyncBlackBoardSkillData();
         }

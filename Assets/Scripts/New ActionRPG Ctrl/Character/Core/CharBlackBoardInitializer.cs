@@ -1,5 +1,6 @@
 using UnityEngine;
 using System.Collections.Generic;
+using UnityEngine.Serialization;
 
 /// <summary>
 /// Character bootstrap entry for blackboard data.
@@ -57,6 +58,12 @@ public class CharBlackBoardInitializer : MonoBehaviour
     [SerializeField] private float _startHp = -1f;
     [Tooltip("Negative means use template/current value.")]
     [SerializeField] private float _maxHp = -1f;
+    [Tooltip("Enable when this unit should consume skill energy.")]
+    [SerializeField] private bool _hasEnergy = true;
+    [Tooltip("Negative means use template/current value.")]
+    [SerializeField] private float _startEnergy = -1f;
+    [Tooltip("Negative means use template/current value.")]
+    [SerializeField] private float _maxEnergy = -1f;
 
     [Header("Combat")]
     [Tooltip("Optional combat template for blackboard-only units.")]
@@ -66,7 +73,8 @@ public class CharBlackBoardInitializer : MonoBehaviour
     [Tooltip("Negative means use template/current value.")]
     [SerializeField] private float _criticalAttackPower = -1f;
     [Tooltip("Negative means use template/current value.")]
-    [SerializeField] private float _attackSpeed = -1f;
+    [FormerlySerializedAs("_attackSpeed")]
+    [SerializeField] private float _rangedAttackSpeed = -1f;
     [Tooltip("Negative means use template/current value.")]
     [SerializeField] private float _attackRange = -1f;
     [Tooltip("Negative means use template/current value.")]
@@ -224,31 +232,58 @@ public class CharBlackBoardInitializer : MonoBehaviour
             resources.hp = 0f;
             resources.maxHp = 0f;
             _blackBoard.Action.isDead = false;
-            return;
+        }
+        else
+        {
+            float resolvedMaxHp = _maxHp >= 0f
+                ? _maxHp
+                : resourceSource != null
+                    ? resourceSource.MaxHitPoint
+                    : resources.maxHp;
+
+            resolvedMaxHp = Mathf.Max(0f, resolvedMaxHp);
+
+            float defaultHp = resolvedMaxHp;
+            if (resourceSource != null)
+            {
+                defaultHp = resourceSource.HitPoint;
+            }
+            else if (resources.hp > 0f)
+            {
+                defaultHp = resources.hp;
+            }
+
+            float resolvedHp = _startHp >= 0f ? _startHp : defaultHp;
+            resources.maxHp = resolvedMaxHp;
+            resources.hp = Mathf.Clamp(resolvedHp, 0f, resolvedMaxHp);
+            _blackBoard.Action.isDead = resources.hp <= 0f;
         }
 
-        float resolvedMaxHp = _maxHp >= 0f
-            ? _maxHp
+        resources.hasEnergy = _hasEnergy;
+
+        float resolvedMaxEnergy = _maxEnergy >= 0f
+            ? _maxEnergy
             : resourceSource != null
-                ? resourceSource.MaxHitPoint
-                : resources.maxHp;
+                ? resourceSource.MaxEnergy
+                : resources.maxEnergy;
 
-        resolvedMaxHp = Mathf.Max(0f, resolvedMaxHp);
+        resolvedMaxEnergy = Mathf.Max(0f, resolvedMaxEnergy);
 
-        float defaultHp = resolvedMaxHp;
+        float defaultEnergy = resolvedMaxEnergy;
         if (resourceSource != null)
         {
-            defaultHp = resourceSource.HitPoint;
+            defaultEnergy = resourceSource.Energy;
         }
-        else if (resources.hp > 0f)
+        else if (resources.energy > 0f)
         {
-            defaultHp = resources.hp;
+            defaultEnergy = resources.energy;
         }
 
-        float resolvedHp = _startHp >= 0f ? _startHp : defaultHp;
-        resources.maxHp = resolvedMaxHp;
-        resources.hp = Mathf.Clamp(resolvedHp, 0f, resolvedMaxHp);
-        _blackBoard.Action.isDead = resources.hp <= 0f;
+        float resolvedEnergy = _startEnergy >= 0f ? _startEnergy : defaultEnergy;
+        resources.maxEnergy = resources.hasEnergy ? resolvedMaxEnergy : 0f;
+        resources.energy = resources.hasEnergy
+            ? Mathf.Clamp(resolvedEnergy, 0f, resources.maxEnergy)
+            : 0f;
     }
 
     private void ApplyCombat(StateManager stateManager)
@@ -279,13 +314,13 @@ public class CharBlackBoardInitializer : MonoBehaviour
             combat.criticalAttackPower = Mathf.Max(0f, attackSource.maxDamage);
         }
 
-        if (_attackSpeed >= 0f)
+        if (_rangedAttackSpeed >= 0f)
         {
-            combat.attackSpeed = Mathf.Max(0f, _attackSpeed);
+            combat.rangedAttackSpeed = Mathf.Max(0f, _rangedAttackSpeed);
         }
         else if (attackSource != null)
         {
-            combat.attackSpeed = Mathf.Max(0f, attackSource.attackSpeed);
+            combat.rangedAttackSpeed = Mathf.Max(0f, attackSource.rangedAttackSpeed);
         }
 
         if (_attackRange >= 0f)

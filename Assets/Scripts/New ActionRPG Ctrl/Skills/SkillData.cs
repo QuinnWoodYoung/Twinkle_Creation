@@ -21,6 +21,7 @@ public class SkillData : ScriptableObject
     public string skillName;
     public string skillDescribe;
     public float cooldown;
+    [Min(0f)] public float energyCost;
 
     [Header("Cast Anim")]
     [Tooltip("技能施法动画类别。相同类别的技能共用同一套角色动画。")]

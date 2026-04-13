@@ -310,6 +310,84 @@ public class StateManager : MonoBehaviour
         }
     }
 
+    public float MaxEnergy
+    {
+        get
+        {
+            if (_blackBoard != null)
+            {
+                return _blackBoard.Features.useResources && _blackBoard.Resources.hasEnergy
+                    ? _blackBoard.Resources.maxEnergy
+                    : 0f;
+            }
+
+            return characterData != null ? characterData.MaxEnergy : 0f;
+        }
+        set
+        {
+            float finalValue = Mathf.Max(0f, value);
+            if (_blackBoard != null)
+            {
+                if (!_blackBoard.Features.useResources)
+                {
+                    return;
+                }
+
+                _blackBoard.Resources.hasEnergy = finalValue > 0f;
+                _blackBoard.Resources.maxEnergy = finalValue;
+                if (_blackBoard.Resources.energy > finalValue)
+                {
+                    _blackBoard.Resources.energy = finalValue;
+                }
+            }
+
+            if (characterData != null)
+            {
+                characterData.MaxEnergy = finalValue;
+                if (characterData.Energy > finalValue)
+                {
+                    characterData.Energy = finalValue;
+                }
+            }
+        }
+    }
+
+    public float Energy
+    {
+        get
+        {
+            if (_blackBoard != null)
+            {
+                return _blackBoard.Features.useResources && _blackBoard.Resources.hasEnergy
+                    ? _blackBoard.Resources.energy
+                    : 0f;
+            }
+
+            return characterData != null ? characterData.Energy : 0f;
+        }
+        set
+        {
+            float maxEnergy = MaxEnergy;
+            float finalValue = maxEnergy > 0f ? Mathf.Clamp(value, 0f, maxEnergy) : Mathf.Max(0f, value);
+
+            if (_blackBoard != null)
+            {
+                if (!_blackBoard.Features.useResources)
+                {
+                    return;
+                }
+
+                _blackBoard.Resources.hasEnergy = maxEnergy > 0f;
+                _blackBoard.Resources.energy = finalValue;
+            }
+
+            if (characterData != null)
+            {
+                characterData.Energy = finalValue;
+            }
+        }
+    }
+
     public void TakeDamage(StateManager attacker, StateManager defender)
     {
         if (defender == null || defender.IsInvulnerable)
@@ -602,11 +680,16 @@ public class StateManager : MonoBehaviour
             _blackBoard.Resources.hasHealth = true;
             _blackBoard.Resources.hp = HitPoint;
             _blackBoard.Resources.maxHp = MaxHitPoint;
+            _blackBoard.Resources.hasEnergy = MaxEnergy > 0f;
+            _blackBoard.Resources.energy = Energy;
+            _blackBoard.Resources.maxEnergy = MaxEnergy;
 
             if (characterData != null)
             {
                 characterData.HitPoint = _blackBoard.Resources.hp;
                 characterData.MaxHitPoint = _blackBoard.Resources.maxHp;
+                characterData.Energy = _blackBoard.Resources.energy;
+                characterData.MaxEnergy = _blackBoard.Resources.maxEnergy;
             }
         }
 
@@ -614,7 +697,7 @@ public class StateManager : MonoBehaviour
         {
             _blackBoard.Combat.attackPower = attackData.minDamage;
             _blackBoard.Combat.criticalAttackPower = attackData.maxDamage;
-            _blackBoard.Combat.attackSpeed = attackData.attackSpeed;
+            _blackBoard.Combat.rangedAttackSpeed = attackData.rangedAttackSpeed;
             _blackBoard.Combat.attackRange = attackData.attackRange;
             _blackBoard.Combat.maxAttackRange = attackData.maxAttackRange;
             _blackBoard.Combat.attackCooldown = attackData.coolDown;
@@ -703,13 +786,16 @@ public class StateManager : MonoBehaviour
             _blackBoard.Resources.hasHealth = true;
             _blackBoard.Resources.maxHp = Mathf.Max(0f, characterData.MaxHitPoint);
             _blackBoard.Resources.hp = Mathf.Clamp(characterData.HitPoint, 0f, _blackBoard.Resources.maxHp);
+            _blackBoard.Resources.hasEnergy = characterData.MaxEnergy > 0f;
+            _blackBoard.Resources.maxEnergy = Mathf.Max(0f, characterData.MaxEnergy);
+            _blackBoard.Resources.energy = Mathf.Clamp(characterData.Energy, 0f, _blackBoard.Resources.maxEnergy);
         }
 
         if (_blackBoard.Features.useCombat && attackData != null)
         {
             _blackBoard.Combat.attackPower = attackData.minDamage;
             _blackBoard.Combat.criticalAttackPower = attackData.maxDamage;
-            _blackBoard.Combat.attackSpeed = attackData.attackSpeed;
+            _blackBoard.Combat.rangedAttackSpeed = attackData.rangedAttackSpeed;
             _blackBoard.Combat.attackRange = attackData.attackRange;
             _blackBoard.Combat.maxAttackRange = attackData.maxAttackRange;
             _blackBoard.Combat.attackCooldown = attackData.coolDown;

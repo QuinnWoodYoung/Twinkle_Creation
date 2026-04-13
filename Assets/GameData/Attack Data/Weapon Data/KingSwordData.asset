@@ -53,7 +53,7 @@ MonoBehaviour:
   maxChargeTime: 1.2
   chargeReleaseAnimKey: Attack
   attackCastVfx: {fileID: 0}
-  attackHitVfx: {fileID: 0}
+  attackHitVfx: {fileID: 6750108211637369354, guid: 34f3a8b34366bc5469ddbf9e468212fa, type: 3}
   attackVfxPointName: BasicAttack VFX
   projectileSpawnPointName: 
   preferOwnerAttackVfxPoint: 1

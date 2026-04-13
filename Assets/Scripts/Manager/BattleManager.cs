@@ -34,13 +34,13 @@ public class BattleManager : MonoBehaviour
                 return;
             }
 
-            TryReceiveAttack(weaponAttacker);
+            TryReceiveAttack(weaponAttacker, col);
             return;
         }
 
         if (TryResolveProjectileAttacker(col, out GameObject projectileAttacker))
         {
-            TryReceiveAttack(projectileAttacker);
+            TryReceiveAttack(projectileAttacker, col);
         }
     }
 
@@ -90,7 +90,7 @@ public class BattleManager : MonoBehaviour
         return true;
     }
 
-    private void TryReceiveAttack(GameObject attacker)
+    private void TryReceiveAttack(GameObject attacker, Collider sourceCollider)
     {
         GameObject attackerUnit = CharRelationResolver.NormalizeUnit(attacker);
         GameObject defenderUnit = CharRelationResolver.NormalizeUnit(gameObject);
@@ -106,6 +106,29 @@ public class BattleManager : MonoBehaviour
         }
 
         CharResourceResolver.ApplyDamage(defenderUnit, damage);
+        AttackData_SO attackData = CharResourceResolver.GetAttackData(attackerUnit);
+        Vector3 impactPoint = ResolveImpactPoint(sourceCollider, defenderUnit, attackData);
+        CharBasicAttackVfxUtility.PlayHitVfx(attackData, impactPoint, defenderUnit);
+    }
+
+    private static Vector3 ResolveImpactPoint(Collider sourceCollider, GameObject defenderUnit, AttackData_SO attackData)
+    {
+        float aimHeight = attackData != null ? attackData.targetAimHeight : 0.55f;
+        Vector3 fallbackPoint = CharBasicAttackHitUtility.ResolveUnitAimPoint(defenderUnit, aimHeight);
+        if (sourceCollider == null)
+        {
+            return fallbackPoint;
+        }
+
+        Vector3 impactPoint = sourceCollider.ClosestPoint(fallbackPoint);
+        if (float.IsNaN(impactPoint.x) || float.IsInfinity(impactPoint.x)
+            || float.IsNaN(impactPoint.y) || float.IsInfinity(impactPoint.y)
+            || float.IsNaN(impactPoint.z) || float.IsInfinity(impactPoint.z))
+        {
+            return fallbackPoint;
+        }
+
+        return impactPoint;
     }
 
     private static bool ShouldSkipLegacyWeaponCollisionDamage(AttackData_SO attackData)

@@ -13,5 +13,5 @@ MonoBehaviour:
   m_Name: "\u98CE\u66B4\u4E4B\u62F3\u7729\u6655"
   m_EditorClassIdentifier: 
   statusToApply: 1
-  whoToApply: 0
+  whoToApply: 1
   buffDuration: 3

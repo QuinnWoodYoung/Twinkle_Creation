@@ -21,6 +21,7 @@ Apply these constraints before editing:
 - Treat the active gameplay path as the newer ActionRPG chain unless scene objects clearly prove otherwise.
 - Treat `CharBlackBoard` as the shared runtime data hub for one unit. New gameplay code should prefer reading blackboard slices through resolver helpers instead of creating another authority path.
 - Start character-combat work from `CharSignalReader`, `CharCtrl`, `CharActionCtrl`, `CharStatusCtrl`, `CharAnimCtrl`, `CharWeaponCtrl`, `WeaponAnimCtrl`, `CharSkillCtrl`, and `SkillData`.
+- Treat the current normal/basic attack implementation as functionally sufficient. Prefer targeted fixes, VFX/data hookups, or compatibility patches over redesigning the basic attack flow unless the task explicitly asks for a rework.
 - Treat the legacy stack as compatibility surface, not the default place for new combat work. It still matters for some inventory, pickup, and older prefab flows, but `StateManager` is now mainly a bridge.
 - Preserve the current body/weapon split: `CharAnimCtrl` writes body Animator state, while weapon-prefab animation belongs to `WeaponAnimCtrl` and is coordinated by `CharWeaponCtrl`.
 - Preserve the current status ownership split: `CharStatusCtrl` owns gameplay state, `CharBlackBoard.Status.snapshot` is the shared read outlet, `CharStatusDef` owns data/config, and `CharStatusVfxCtrl` owns runtime status VFX playback.

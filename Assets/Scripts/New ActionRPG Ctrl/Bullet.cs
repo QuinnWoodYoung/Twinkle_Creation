@@ -20,6 +20,7 @@ public class Bullet : MonoBehaviour
     [SerializeField] private GameObject _impactVfx;
     [SerializeField] private bool _attachImpactVfxToTarget;
     [SerializeField] private Vector3 _impactVfxOffset;
+    [SerializeField] private float _impactVfxLifetime = 2f;
 
     private Rigidbody _rigidbody;
     private Collider _targetCollider;
@@ -81,6 +82,7 @@ public class Bullet : MonoBehaviour
         _impactVfx = profile.attackHitVfx;
         _attachImpactVfxToTarget = profile.attachAttackHitVfxToTarget;
         _impactVfxOffset = profile.attackHitVfxOffset;
+        _impactVfxLifetime = profile.attackHitVfxLifetime;
     }
 
     public void SetImpactVfx(GameObject impactVfx)
@@ -413,27 +415,14 @@ public class Bullet : MonoBehaviour
 
     private void PlayImpactVfx(Vector3 impactPoint, GameObject targetUnit)
     {
-        if (_impactVfx == null)
-        {
-            return;
-        }
-
-        Transform parent = null;
-        Vector3 spawnPoint = impactPoint;
-        if (targetUnit != null)
-        {
-            parent = _attachImpactVfxToTarget ? targetUnit.transform : null;
-            spawnPoint = CharBasicAttackHitUtility.ResolveUnitAimPoint(targetUnit, _targetAimHeight);
-        }
-
-        if (parent != null)
-        {
-            GameObject instance = Instantiate(_impactVfx, spawnPoint, Quaternion.identity, parent);
-            instance.transform.localPosition += _impactVfxOffset;
-            return;
-        }
-
-        Instantiate(_impactVfx, spawnPoint + _impactVfxOffset, Quaternion.identity);
+        CharBasicAttackVfxUtility.PlayHitVfx(
+            _impactVfx,
+            _attachImpactVfxToTarget,
+            _impactVfxOffset,
+            _impactVfxLifetime,
+            impactPoint,
+            targetUnit,
+            _targetAimHeight);
     }
 
     public bool TryConsumeImpact()

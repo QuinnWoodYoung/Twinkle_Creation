@@ -1,6 +1,7 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.Serialization;
 
 public enum BasicAttackMode
 {
@@ -16,7 +17,7 @@ public class AttackData_SO : ScriptableObject
     [Header("Core Stats")]
     public float attackRange;
     public float maxAttackRange;
-    public float attackSpeed;
+    [FormerlySerializedAs("attackSpeed")] public float rangedAttackSpeed;
     public float coolDown;
     public float attackTime;
     public float minDamage;
@@ -103,7 +104,7 @@ public class AttackData_SO : ScriptableObject
 
         attackRange = weapon.attackRange;
         maxAttackRange = weapon.maxAttackRange;
-        attackSpeed = weapon.attackSpeed;
+        rangedAttackSpeed = weapon.rangedAttackSpeed;
         coolDown = weapon.coolDown;
         attackTime = weapon.attackTime;
         minDamage = weapon.minDamage;

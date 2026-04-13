@@ -14,3 +14,5 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   HitPoint: 10
   MaxHitPoint: 10
+  Energy: 100
+  MaxEnergy: 100

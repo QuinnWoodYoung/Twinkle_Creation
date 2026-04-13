@@ -15,6 +15,11 @@ MonoBehaviour:
   skillName: "\u65E0\u654C\u65A9"
   skillDescribe: "\u9501\u5B9A\u4E00\u540D\u654C\u4EBA\u540E\u8FDE\u7EED\u95EA\u70C1\u65A9\u51FB\u9644\u8FD1\u76EE\u6807\u3002"
   cooldown: 1
+  energyCost: 10
+  castAnimType: 1
+  castAnimDur: 0
+  lockMoveOnCastAnim: 0
+  lockRotateOnCastAnim: 0
   maxCastRange: 8
   targetingMode: 1
   targetTeamRule: 1
