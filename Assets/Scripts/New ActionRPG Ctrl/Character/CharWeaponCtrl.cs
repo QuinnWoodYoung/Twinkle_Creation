@@ -15,6 +15,7 @@ public class CharWeaponCtrl : MonoBehaviour
     private WeaponVisualCtrl _weaponVisualCtrl;
     private CharActionCtrl _actionCtrl;
     private CharBlackBoard _blackBoard;
+    private SkillPreviewController _skillPreviewCtrl;
     private WeaponType _lastWeapon = (WeaponType)(-1);
     private float _attackCooldownRemain;
     private BasicAttackMode _resolvedAttackMode = BasicAttackMode.MeleeCombo;
@@ -86,6 +87,7 @@ public class CharWeaponCtrl : MonoBehaviour
         _weaponVisualCtrl = GetComponent<WeaponVisualCtrl>();
         _actionCtrl = GetComponent<CharActionCtrl>();
         _blackBoard = GetComponent<CharBlackBoard>();
+        _skillPreviewCtrl = GetComponent<SkillPreviewController>();
 
         if (_animCtrl == null)
             _animCtrl = gameObject.AddComponent<CharAnimCtrl>();
@@ -163,6 +165,12 @@ public class CharWeaponCtrl : MonoBehaviour
     private void UpdateAtkInput()
     {
         if (_charCtrl == null || _charCtrl.Param == null)
+            return;
+
+        if (_skillPreviewCtrl == null)
+            _skillPreviewCtrl = GetComponent<SkillPreviewController>();
+
+        if (_skillPreviewCtrl != null && _skillPreviewCtrl.ShouldBlockAttackThisFrame)
             return;
 
         AttackInputState input = _charCtrl.Param.AttackState;

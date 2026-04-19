@@ -90,6 +90,8 @@ public static class CharBasicAttackTargeting
             return Vector3.forward;
         }
 
+        PlayerInputManager inputManager = PlayerInputManager.instance;
+
         if (useLockedAim && charCtrl != null && charCtrl.LockedTarget != null)
         {
             Vector3 lockedDir = charCtrl.LockedTarget.position - attackerUnit.transform.position;
@@ -98,6 +100,13 @@ public static class CharBasicAttackTargeting
             {
                 return lockedDir.normalized;
             }
+        }
+
+        if (inputManager != null && inputManager.IsUsingGamepadInput)
+        {
+            Vector3 forward = attackerUnit.transform.forward;
+            forward.y = 0f;
+            return forward.sqrMagnitude > 0.001f ? forward.normalized : Vector3.forward;
         }
 
         if (charCtrl != null && charCtrl.Param != null)

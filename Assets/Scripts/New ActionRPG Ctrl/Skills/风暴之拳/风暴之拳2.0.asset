@@ -16,10 +16,16 @@ MonoBehaviour:
   skillDescribe: 
   cooldown: 2
   energyCost: 10
-  castAnimType: 0
+  castAnimType: 2
   castAnimDur: 0
   lockMoveOnCastAnim: 0
   lockRotateOnCastAnim: 0
+  castFlowType: 0
+  channelDuration: 0
+  channelTickInterval: 0
+  triggerChannelTickImmediately: 1
+  lockMoveDuringChannel: 1
+  lockRotateDuringChannel: 0
   maxCastRange: 10
   targetingMode: 1
   targetTeamRule: 1
@@ -31,6 +37,18 @@ MonoBehaviour:
   castFacingAngleTolerance: 5
   lockMovementDuringFacing: 1
   cancelFacingCastOnMoveInput: 0
+  useAimPreview: 1
+  previewShape: 1
+  previewAnchor: 1
+  previewRadius: 0
+  previewLength: 0
+  previewWidth: 0
+  previewAngle: 90
+  showCastRangeIndicator: 1
+  previewValidColor: {r: 0.2, g: 1, b: 0.45, a: 0.95}
+  previewInvalidColor: {r: 1, g: 0.25, b: 0.25, a: 0.95}
   effects:
   - {fileID: 11400000, guid: 1454b95cb92905c4c85ad05df07c092f, type: 2}
   - {fileID: 11400000, guid: 2c6a8e1641dbf0d419c9673ef35ced20, type: 2}
+  channelTickEffects: []
+  channelEndEffects: []

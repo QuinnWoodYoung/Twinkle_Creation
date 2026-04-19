@@ -73,6 +73,15 @@ public partial class @PlayerInputMap: IInputActionCollection2, IDisposable
                     ""initialStateCheck"": false
                 },
                 {
+                    ""name"": ""SkillModifier"",
+                    ""type"": ""Button"",
+                    ""id"": ""c17dbd3c-675d-4fd4-93d1-835981fd6b9b"",
+                    ""expectedControlType"": ""Button"",
+                    ""processors"": """",
+                    ""interactions"": """",
+                    ""initialStateCheck"": false
+                },
+                {
                     ""name"": ""Skill1"",
                     ""type"": ""Button"",
                     ""id"": ""7d1615cc-c180-43d2-93c3-6bf402954db5"",
@@ -167,8 +176,30 @@ public partial class @PlayerInputMap: IInputActionCollection2, IDisposable
                 },
                 {
                     ""name"": """",
+                    ""id"": ""89b24cf2-3fc9-4cbe-8f72-53f9c1c65001"",
+                    ""path"": ""<Gamepad>/leftStick"",
+                    ""interactions"": """",
+                    ""processors"": """",
+                    ""groups"": """",
+                    ""action"": ""Movement"",
+                    ""isComposite"": false,
+                    ""isPartOfComposite"": false
+                },
+                {
+                    ""name"": """",
                     ""id"": ""5cc8f2dc-1de9-4c24-8444-697c50c23b44"",
                     ""path"": ""<Mouse>/leftButton"",
+                    ""interactions"": """",
+                    ""processors"": """",
+                    ""groups"": """",
+                    ""action"": ""Attack"",
+                    ""isComposite"": false,
+                    ""isPartOfComposite"": false
+                },
+                {
+                    ""name"": """",
+                    ""id"": ""1cf7d988-6f45-49a9-8a34-7e2b74f65002"",
+                    ""path"": ""<Gamepad>/rightTrigger"",
                     ""interactions"": """",
                     ""processors"": """",
                     ""groups"": """",
@@ -189,8 +220,30 @@ public partial class @PlayerInputMap: IInputActionCollection2, IDisposable
                 },
                 {
                     ""name"": """",
+                    ""id"": ""7d1d480d-9428-44ca-b8f5-ddbe8a65a2e7"",
+                    ""path"": ""<Gamepad>/rightShoulder"",
+                    ""interactions"": """",
+                    ""processors"": """",
+                    ""groups"": """",
+                    ""action"": ""Dodge"",
+                    ""isComposite"": false,
+                    ""isPartOfComposite"": false
+                },
+                {
+                    ""name"": """",
                     ""id"": ""3a102f01-aa34-4bec-9e9a-0fa3c36d419e"",
                     ""path"": ""<Mouse>/position"",
+                    ""interactions"": """",
+                    ""processors"": """",
+                    ""groups"": """",
+                    ""action"": ""Aim"",
+                    ""isComposite"": false,
+                    ""isPartOfComposite"": false
+                },
+                {
+                    ""name"": """",
+                    ""id"": ""4b7244d1-9494-4ae4-9f42-8b6802f65003"",
+                    ""path"": ""<Gamepad>/rightStick"",
                     ""interactions"": """",
                     ""processors"": """",
                     ""groups"": """",
@@ -211,6 +264,28 @@ public partial class @PlayerInputMap: IInputActionCollection2, IDisposable
                 },
                 {
                     ""name"": """",
+                    ""id"": ""6da822f7-0af3-4c74-911d-6d240bf65004"",
+                    ""path"": ""<Gamepad>/rightStickPress"",
+                    ""interactions"": """",
+                    ""processors"": """",
+                    ""groups"": """",
+                    ""action"": ""Lock"",
+                    ""isComposite"": false,
+                    ""isPartOfComposite"": false
+                },
+                {
+                    ""name"": """",
+                    ""id"": ""9b7fe714-698c-40b3-925a-d585fe357d16"",
+                    ""path"": ""<Gamepad>/leftShoulder"",
+                    ""interactions"": """",
+                    ""processors"": """",
+                    ""groups"": """",
+                    ""action"": ""SkillModifier"",
+                    ""isComposite"": false,
+                    ""isPartOfComposite"": false
+                },
+                {
+                    ""name"": """",
                     ""id"": ""a06bd3b3-ef85-4df8-92d5-186250c7c53d"",
                     ""path"": ""<Keyboard>/1"",
                     ""interactions"": """",
@@ -219,6 +294,39 @@ public partial class @PlayerInputMap: IInputActionCollection2, IDisposable
                     ""action"": ""Skill1"",
                     ""isComposite"": false,
                     ""isPartOfComposite"": false
+                },
+                {
+                    ""name"": """",
+                    ""id"": ""b9bf9a1c-5a75-43d5-a678-8a7d4bf65005"",
+                    ""path"": ""OneModifier"",
+                    ""interactions"": """",
+                    ""processors"": """",
+                    ""groups"": """",
+                    ""action"": ""Skill1"",
+                    ""isComposite"": true,
+                    ""isPartOfComposite"": false
+                },
+                {
+                    ""name"": ""modifier"",
+                    ""id"": ""e2cb4ddf-84c0-46b6-9d8e-b0b34bf65006"",
+                    ""path"": ""<Gamepad>/leftShoulder"",
+                    ""interactions"": """",
+                    ""processors"": """",
+                    ""groups"": """",
+                    ""action"": ""Skill1"",
+                    ""isComposite"": false,
+                    ""isPartOfComposite"": true
+                },
+                {
+                    ""name"": ""binding"",
+                    ""id"": ""0fb3b4d5-b54b-4186-95ff-8141ebf65007"",
+                    ""path"": ""<Gamepad>/buttonWest"",
+                    ""interactions"": """",
+                    ""processors"": """",
+                    ""groups"": """",
+                    ""action"": ""Skill1"",
+                    ""isComposite"": false,
+                    ""isPartOfComposite"": true
                 },
                 {
                     ""name"": """",
@@ -233,6 +341,39 @@ public partial class @PlayerInputMap: IInputActionCollection2, IDisposable
                 },
                 {
                     ""name"": """",
+                    ""id"": ""f667c72f-f76f-4791-8637-8f3d9bf65008"",
+                    ""path"": ""OneModifier"",
+                    ""interactions"": """",
+                    ""processors"": """",
+                    ""groups"": """",
+                    ""action"": ""Skill2"",
+                    ""isComposite"": true,
+                    ""isPartOfComposite"": false
+                },
+                {
+                    ""name"": ""modifier"",
+                    ""id"": ""896f44c7-ef90-4b58-b0de-67387bf65009"",
+                    ""path"": ""<Gamepad>/leftShoulder"",
+                    ""interactions"": """",
+                    ""processors"": """",
+                    ""groups"": """",
+                    ""action"": ""Skill2"",
+                    ""isComposite"": false,
+                    ""isPartOfComposite"": true
+                },
+                {
+                    ""name"": ""binding"",
+                    ""id"": ""cf5bbf0c-4eeb-4a17-b3b2-c3d5abf6500a"",
+                    ""path"": ""<Gamepad>/buttonNorth"",
+                    ""interactions"": """",
+                    ""processors"": """",
+                    ""groups"": """",
+                    ""action"": ""Skill2"",
+                    ""isComposite"": false,
+                    ""isPartOfComposite"": true
+                },
+                {
+                    ""name"": """",
                     ""id"": ""85719aa8-e213-4413-b7a0-01918c7ef5b2"",
                     ""path"": ""<Keyboard>/3"",
                     ""interactions"": """",
@@ -244,6 +385,39 @@ public partial class @PlayerInputMap: IInputActionCollection2, IDisposable
                 },
                 {
                     ""name"": """",
+                    ""id"": ""5f21a3c5-1a5a-48e0-9767-eb7dfbf6500b"",
+                    ""path"": ""OneModifier"",
+                    ""interactions"": """",
+                    ""processors"": """",
+                    ""groups"": """",
+                    ""action"": ""Skill3"",
+                    ""isComposite"": true,
+                    ""isPartOfComposite"": false
+                },
+                {
+                    ""name"": ""modifier"",
+                    ""id"": ""2d26008f-d1cf-4f2f-8d11-9cbdfbf6500c"",
+                    ""path"": ""<Gamepad>/leftShoulder"",
+                    ""interactions"": """",
+                    ""processors"": """",
+                    ""groups"": """",
+                    ""action"": ""Skill3"",
+                    ""isComposite"": false,
+                    ""isPartOfComposite"": true
+                },
+                {
+                    ""name"": ""binding"",
+                    ""id"": ""79477b26-fad2-4927-83b4-2b4c5bf6500d"",
+                    ""path"": ""<Gamepad>/buttonSouth"",
+                    ""interactions"": """",
+                    ""processors"": """",
+                    ""groups"": """",
+                    ""action"": ""Skill3"",
+                    ""isComposite"": false,
+                    ""isPartOfComposite"": true
+                },
+                {
+                    ""name"": """",
                     ""id"": ""6aa168ba-e385-4414-8dd7-4a772c394226"",
                     ""path"": ""<Keyboard>/4"",
                     ""interactions"": """",
@@ -252,6 +426,39 @@ public partial class @PlayerInputMap: IInputActionCollection2, IDisposable
                     ""action"": ""Skill4"",
                     ""isComposite"": false,
                     ""isPartOfComposite"": false
+                },
+                {
+                    ""name"": """",
+                    ""id"": ""af8a3296-2d31-4f7a-8747-cf4efbf6500e"",
+                    ""path"": ""OneModifier"",
+                    ""interactions"": """",
+                    ""processors"": """",
+                    ""groups"": """",
+                    ""action"": ""Skill4"",
+                    ""isComposite"": true,
+                    ""isPartOfComposite"": false
+                },
+                {
+                    ""name"": ""modifier"",
+                    ""id"": ""4de92f5c-35cd-4763-a0d7-5f7cabf6500f"",
+                    ""path"": ""<Gamepad>/leftShoulder"",
+                    ""interactions"": """",
+                    ""processors"": """",
+                    ""groups"": """",
+                    ""action"": ""Skill4"",
+                    ""isComposite"": false,
+                    ""isPartOfComposite"": true
+                },
+                {
+                    ""name"": ""binding"",
+                    ""id"": ""3d33bcfe-2cb1-4f85-8070-51adabf65010"",
+                    ""path"": ""<Gamepad>/buttonEast"",
+                    ""interactions"": """",
+                    ""processors"": """",
+                    ""groups"": """",
+                    ""action"": ""Skill4"",
+                    ""isComposite"": false,
+                    ""isPartOfComposite"": true
                 }
             ]
         }
@@ -265,6 +472,7 @@ public partial class @PlayerInputMap: IInputActionCollection2, IDisposable
         m_GamePlay_Dodge = m_GamePlay.FindAction("Dodge", throwIfNotFound: true);
         m_GamePlay_Aim = m_GamePlay.FindAction("Aim", throwIfNotFound: true);
         m_GamePlay_Lock = m_GamePlay.FindAction("Lock", throwIfNotFound: true);
+        m_GamePlay_SkillModifier = m_GamePlay.FindAction("SkillModifier", throwIfNotFound: true);
         m_GamePlay_Skill1 = m_GamePlay.FindAction("Skill1", throwIfNotFound: true);
         m_GamePlay_Skill2 = m_GamePlay.FindAction("Skill2", throwIfNotFound: true);
         m_GamePlay_Skill3 = m_GamePlay.FindAction("Skill3", throwIfNotFound: true);
@@ -335,6 +543,7 @@ public partial class @PlayerInputMap: IInputActionCollection2, IDisposable
     private readonly InputAction m_GamePlay_Dodge;
     private readonly InputAction m_GamePlay_Aim;
     private readonly InputAction m_GamePlay_Lock;
+    private readonly InputAction m_GamePlay_SkillModifier;
     private readonly InputAction m_GamePlay_Skill1;
     private readonly InputAction m_GamePlay_Skill2;
     private readonly InputAction m_GamePlay_Skill3;
@@ -348,6 +557,7 @@ public partial class @PlayerInputMap: IInputActionCollection2, IDisposable
         public InputAction @Dodge => m_Wrapper.m_GamePlay_Dodge;
         public InputAction @Aim => m_Wrapper.m_GamePlay_Aim;
         public InputAction @Lock => m_Wrapper.m_GamePlay_Lock;
+        public InputAction @SkillModifier => m_Wrapper.m_GamePlay_SkillModifier;
         public InputAction @Skill1 => m_Wrapper.m_GamePlay_Skill1;
         public InputAction @Skill2 => m_Wrapper.m_GamePlay_Skill2;
         public InputAction @Skill3 => m_Wrapper.m_GamePlay_Skill3;
@@ -376,6 +586,9 @@ public partial class @PlayerInputMap: IInputActionCollection2, IDisposable
             @Lock.started += instance.OnLock;
             @Lock.performed += instance.OnLock;
             @Lock.canceled += instance.OnLock;
+            @SkillModifier.started += instance.OnSkillModifier;
+            @SkillModifier.performed += instance.OnSkillModifier;
+            @SkillModifier.canceled += instance.OnSkillModifier;
             @Skill1.started += instance.OnSkill1;
             @Skill1.performed += instance.OnSkill1;
             @Skill1.canceled += instance.OnSkill1;
@@ -407,6 +620,9 @@ public partial class @PlayerInputMap: IInputActionCollection2, IDisposable
             @Lock.started -= instance.OnLock;
             @Lock.performed -= instance.OnLock;
             @Lock.canceled -= instance.OnLock;
+            @SkillModifier.started -= instance.OnSkillModifier;
+            @SkillModifier.performed -= instance.OnSkillModifier;
+            @SkillModifier.canceled -= instance.OnSkillModifier;
             @Skill1.started -= instance.OnSkill1;
             @Skill1.performed -= instance.OnSkill1;
             @Skill1.canceled -= instance.OnSkill1;
@@ -443,6 +659,7 @@ public partial class @PlayerInputMap: IInputActionCollection2, IDisposable
         void OnDodge(InputAction.CallbackContext context);
         void OnAim(InputAction.CallbackContext context);
         void OnLock(InputAction.CallbackContext context);
+        void OnSkillModifier(InputAction.CallbackContext context);
         void OnSkill1(InputAction.CallbackContext context);
         void OnSkill2(InputAction.CallbackContext context);
         void OnSkill3(InputAction.CallbackContext context);

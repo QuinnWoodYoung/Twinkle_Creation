@@ -7,6 +7,7 @@ public class CharAimCtrl : MonoBehaviour
     private CharCtrl _charCtrl;
     private CharBlackBoard _blackBoard;
     private Camera _mainCamera;
+    private SkillPreviewController _skillPreviewCtrl;
 
     [Header("Indicator Settings")]
     [Tooltip("True if this aim controller belongs to the local player character.")]
@@ -16,16 +17,24 @@ public class CharAimCtrl : MonoBehaviour
     private TargetIndicator _currentIndicator;
 
     [Header("Lock-On Settings")]
-    [Tooltip("Maximum screen-space distance from the mouse cursor when selecting a lock-on target.")]
+    [Tooltip("Maximum screen-space distance from the current aim cursor when selecting a lock-on target.")]
     public float maxLockOnRadius = 200f;
+    [Tooltip("Gamepad lock switch only triggers when the right stick reaches this magnitude.")]
+    public float gamepadLockSwitchThreshold = 0.65f;
+    [Tooltip("After a switch, the right stick must relax below this value before another switch can happen.")]
+    public float gamepadLockSwitchResetThreshold = 0.35f;
+    [Tooltip("Candidates farther than this from the player are ignored during right-stick lock switching.")]
+    public float gamepadLockSwitchRange = 18f;
 
     public Transform lockedTarget;
+    private bool _gamepadLockSwitchReady = true;
 
     protected void Awake()
     {
         _charCtrl = GetComponent<CharCtrl>();
         _blackBoard = GetComponent<CharBlackBoard>();
         _mainCamera = Camera.main;
+        _skillPreviewCtrl = GetComponent<SkillPreviewController>();
 
         if (isPlayerControlled && indicatorPrefab != null)
         {
@@ -39,6 +48,11 @@ public class CharAimCtrl : MonoBehaviour
         if (_mainCamera == null)
         {
             _mainCamera = Camera.main;
+        }
+
+        if (_skillPreviewCtrl == null)
+        {
+            _skillPreviewCtrl = GetComponent<SkillPreviewController>();
         }
 
         if (_charCtrl != null && _charCtrl.Param.isLock)
@@ -64,6 +78,26 @@ public class CharAimCtrl : MonoBehaviour
             return;
         }
 
+        if (lockedTarget != null && IsValidLockTarget(lockedTarget))
+        {
+            if (TryHandleGamepadLockSwitch())
+            {
+                return;
+            }
+
+            return;
+        }
+
+        if (TryHandleGamepadLockSwitch())
+        {
+            return;
+        }
+
+        lockedTarget = FindBestCursorLockTarget();
+    }
+
+    private Transform FindBestCursorLockTarget()
+    {
         GameObject selfUnit = _blackBoard != null ? _blackBoard.gameObject : gameObject;
         float minDistance = float.MaxValue;
         Transform bestTarget = null;
@@ -93,7 +127,19 @@ public class CharAimCtrl : MonoBehaviour
                 continue;
             }
 
-            float distance = Vector2.Distance(screenPos, Input.mousePosition);
+            Vector2 aimCursor;
+            PlayerInputManager inputManager = PlayerInputManager.instance;
+            if (inputManager != null && inputManager.IsUsingGamepadInput)
+            {
+                aimCursor = new Vector2(Screen.width * 0.5f, Screen.height * 0.5f);
+            }
+            else
+            {
+                aimCursor = _charCtrl != null && _charCtrl.Param != null
+                    ? _charCtrl.Param.AimTarget
+                    : (Vector2)Input.mousePosition;
+            }
+            float distance = Vector2.Distance(screenPos, aimCursor);
             if (distance >= minDistance || distance > maxLockOnRadius)
             {
                 continue;
@@ -103,7 +149,146 @@ public class CharAimCtrl : MonoBehaviour
             bestTarget = candidateUnit.transform;
         }
 
-        lockedTarget = bestTarget;
+        return bestTarget;
+    }
+
+    private bool TryHandleGamepadLockSwitch()
+    {
+        PlayerInputManager inputManager = PlayerInputManager.instance;
+        if (inputManager == null || !inputManager.IsUsingGamepadInput)
+        {
+            _gamepadLockSwitchReady = true;
+            return false;
+        }
+
+        if (_skillPreviewCtrl != null && _skillPreviewCtrl.IsPreviewing)
+        {
+            return lockedTarget != null;
+        }
+
+        Vector2 stick = inputManager.GamepadAimStick;
+        float magnitude = stick.magnitude;
+        float switchThreshold = Mathf.Max(0f, gamepadLockSwitchThreshold);
+        float resetThreshold = Mathf.Max(0f, gamepadLockSwitchResetThreshold);
+
+        if (magnitude <= resetThreshold)
+        {
+            _gamepadLockSwitchReady = true;
+            return false;
+        }
+
+        if (!_gamepadLockSwitchReady || magnitude < switchThreshold)
+        {
+            return lockedTarget != null;
+        }
+
+        _gamepadLockSwitchReady = false;
+        Transform nextTarget = ResolveGamepadLockTarget(stick);
+        if (nextTarget != null)
+        {
+            lockedTarget = nextTarget;
+            return true;
+        }
+
+        return lockedTarget != null;
+    }
+
+    private Transform ResolveGamepadLockTarget(Vector2 stickInput)
+    {
+        if (_mainCamera == null)
+        {
+            return lockedTarget;
+        }
+
+        GameObject selfUnit = _blackBoard != null ? _blackBoard.gameObject : gameObject;
+        Vector3 desiredDirection = ResolveWorldDirectionFromStick(stickInput);
+        if (desiredDirection.sqrMagnitude <= 0.001f)
+        {
+            return lockedTarget;
+        }
+
+        float bestScore = float.MaxValue;
+        Transform bestTarget = null;
+        float maxRange = Mathf.Max(0.1f, gamepadLockSwitchRange);
+
+        foreach (CharBlackBoard board in CharBlackBoard.ActiveBoards)
+        {
+            if (board == null || board.transform == lockedTarget)
+            {
+                continue;
+            }
+
+            GameObject candidateUnit = board.gameObject;
+            if (!CharRelationResolver.CanReceiveBasicAttack(selfUnit, candidateUnit))
+            {
+                continue;
+            }
+
+            Vector3 toTarget = candidateUnit.transform.position - transform.position;
+            toTarget.y = 0f;
+            float distance = toTarget.magnitude;
+            if (distance <= 0.01f || distance > maxRange)
+            {
+                continue;
+            }
+
+            Vector3 direction = toTarget / distance;
+            float angle = Vector3.Angle(desiredDirection, direction);
+            if (angle > 70f)
+            {
+                continue;
+            }
+
+            float score = angle * 1000f + distance;
+            if (score >= bestScore)
+            {
+                continue;
+            }
+
+            bestScore = score;
+            bestTarget = candidateUnit.transform;
+        }
+
+        return bestTarget != null ? bestTarget : lockedTarget;
+    }
+
+    private bool IsValidLockTarget(Transform target)
+    {
+        if (target == null)
+        {
+            return false;
+        }
+
+        GameObject selfUnit = _blackBoard != null ? _blackBoard.gameObject : gameObject;
+        return CharRelationResolver.CanReceiveBasicAttack(selfUnit, target.gameObject);
+    }
+
+    private Vector3 ResolveWorldDirectionFromStick(Vector2 stickInput)
+    {
+        if (_mainCamera == null || stickInput.sqrMagnitude <= 0.001f)
+        {
+            return Vector3.zero;
+        }
+
+        Vector3 forward = _mainCamera.transform.forward;
+        forward.y = 0f;
+        if (forward.sqrMagnitude <= 0.001f)
+        {
+            forward = transform.forward;
+        }
+
+        Vector3 right = _mainCamera.transform.right;
+        right.y = 0f;
+        if (right.sqrMagnitude <= 0.001f)
+        {
+            right = transform.right;
+        }
+
+        Vector3 worldDirection =
+            right.normalized * stickInput.x +
+            forward.normalized * stickInput.y;
+        worldDirection.y = 0f;
+        return worldDirection.sqrMagnitude > 0.001f ? worldDirection.normalized : Vector3.zero;
     }
 
     protected void OnDestroy()

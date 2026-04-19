@@ -1,0 +1,55 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8735b4492df3aac44be8ad64d7a261b1, type: 3}
+  m_Name: "\u5267\u53D8"
+  m_EditorClassIdentifier: 
+  skillName: "\u5267\u53D8"
+  skillDescribe: "\u6307\u5B9A\u4E00\u4E2A\u533A\u57DF\u6301\u7EED\u5F15\u5BFC\u6DF1\u9677\u6C14\u573A\uFF0C\u5BF9\u5176\u4E2D\u654C\u4EBA\u53CD\u590D\u65BD\u52A0\u51CF\u901F\u3002"
+  cooldown: 12
+  energyCost: 35
+  castAnimType: 1
+  castAnimDur: 0.35
+  lockMoveOnCastAnim: 1
+  lockRotateOnCastAnim: 0
+  castFlowType: 2
+  channelDuration: 4
+  channelTickInterval: 0.4
+  triggerChannelTickImmediately: 1
+  lockMoveDuringChannel: 1
+  lockRotateDuringChannel: 0
+  maxCastRange: 5
+  targetingMode: 0
+  targetTeamRule: 0
+  legacyRequiresTargetUnit: 0
+  clampToMaxRange: 1
+  faceSkillDirectionOnCast: 1
+  faceDirectionLockDuration: 0.12
+  requireFacingBeforeCast: 1
+  castFacingAngleTolerance: 5
+  lockMovementDuringFacing: 1
+  cancelFacingCastOnMoveInput: 0
+  useAimPreview: 1
+  previewShape: 3
+  previewAnchor: 2
+  previewRadius: 4
+  previewLength: 0
+  previewWidth: 0
+  previewAngle: 90
+  showCastRangeIndicator: 1
+  previewValidColor: {r: 0.2, g: 1, b: 0.45, a: 0.95}
+  previewInvalidColor: {r: 1, g: 0.25, b: 0.25, a: 0.95}
+  effects:
+  - {fileID: 11400000, guid: 6df93a18d77449d6870a496352a11c72, type: 2}
+  channelTickEffects:
+  - {fileID: 11400000, guid: c013fdd97d0a4c0d81af0a338e9df501, type: 2}
+  channelEndEffects:
+  - {fileID: 11400000, guid: 07ff415280f84d09a0c1e7bcc76c173d, type: 2}

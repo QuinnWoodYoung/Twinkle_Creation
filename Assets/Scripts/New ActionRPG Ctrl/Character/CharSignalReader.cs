@@ -11,6 +11,7 @@ public class CharSignalReader : MonoBehaviour
     [SerializeField] private bool isPlayerControlled = true;
     [SerializeField] private CharCtrl charCtrl;
     private ICharCtrlSignal currentInputSource;
+    public bool IsPlayerControlled => isPlayerControlled;
 
     public interface ICharCtrlSignal
     {
@@ -19,7 +20,7 @@ public class CharSignalReader : MonoBehaviour
         AttackInputState GetAttackState();
         bool GetLockInput();
         bool GetDodgeInput();
-        void UpdateSkillInputs(List<bool> skillInputs);
+        void UpdateSkillInputs(List<bool> skillInputs, List<ButtonInputState> skillInputStates);
     }
 
     private void Awake()
@@ -46,7 +47,7 @@ public class CharSignalReader : MonoBehaviour
         charCtrl.Param.AttackState = currentInputSource.GetAttackState();
         charCtrl.Param.isLock = currentInputSource.GetLockInput();
         charCtrl.Param.Dodge = currentInputSource.GetDodgeInput();
-        currentInputSource.UpdateSkillInputs(charCtrl.Param.SkillInputDown);
+        currentInputSource.UpdateSkillInputs(charCtrl.Param.SkillInputDown, charCtrl.Param.SkillInputStates);
     }
 
     public void SetInputSource(ICharCtrlSignal source)
@@ -98,7 +99,7 @@ public class PlayerInputSource : CharSignalReader.ICharCtrlSignal
         return PlayerInputManager.instance.playerInputLockValue;
     }
 
-    public void UpdateSkillInputs(List<bool> skillInputs)
+    public void UpdateSkillInputs(List<bool> skillInputs, List<ButtonInputState> skillInputStates)
     {
         var charSkillInputStates = PlayerInputManager.instance.PlayerInputSkillValues;
 
@@ -107,18 +108,24 @@ public class PlayerInputSource : CharSignalReader.ICharCtrlSignal
             _skillWasPressedLastFrame.Add(false);
         }
 
+        while (skillInputStates.Count < skillInputs.Count)
+        {
+            skillInputStates.Add(default);
+        }
+
         for (int i = 0; i < skillInputs.Count; i++)
         {
-            if (i < charSkillInputStates.Count)
+            bool isPressed = i < charSkillInputStates.Count && charSkillInputStates[i];
+            ButtonInputState state = new ButtonInputState
             {
-                bool isPressed = charSkillInputStates[i];
-                skillInputs[i] = isPressed && !_skillWasPressedLastFrame[i];
-                _skillWasPressedLastFrame[i] = isPressed;
-            }
-            else
-            {
-                skillInputs[i] = false;
-            }
+                isDown = isPressed && !_skillWasPressedLastFrame[i],
+                isHeld = isPressed,
+                isUp = !isPressed && _skillWasPressedLastFrame[i],
+            };
+
+            skillInputStates[i] = state;
+            skillInputs[i] = state.isDown;
+            _skillWasPressedLastFrame[i] = isPressed;
         }
     }
 }
@@ -149,11 +156,17 @@ public class AIInputSource : CharSignalReader.ICharCtrlSignal
         return false;
     }
 
-    public void UpdateSkillInputs(List<bool> skillInputs)
+    public void UpdateSkillInputs(List<bool> skillInputs, List<ButtonInputState> skillInputStates)
     {
-        for(int i = 0; i < skillInputs.Count; i++)
+        while (skillInputStates.Count < skillInputs.Count)
+        {
+            skillInputStates.Add(default);
+        }
+
+        for (int i = 0; i < skillInputs.Count; i++)
         {
             skillInputs[i] = false;
+            skillInputStates[i] = default;
         }
     }
 }

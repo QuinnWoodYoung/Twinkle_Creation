@@ -9,6 +9,13 @@ public struct AttackInputState
     public bool isUp;
 }
 
+public struct ButtonInputState
+{
+    public bool isDown;
+    public bool isHeld;
+    public bool isUp;
+}
+
 [Serializable]
 /// <summary>
 /// CharCtrl 每帧消费的输入快照。
@@ -22,4 +29,5 @@ public class CharParam
     public AttackInputState AttackState;
     public bool Dodge;
     public readonly List<bool> SkillInputDown = new List<bool>();
+    public readonly List<ButtonInputState> SkillInputStates = new List<ButtonInputState>();
 }

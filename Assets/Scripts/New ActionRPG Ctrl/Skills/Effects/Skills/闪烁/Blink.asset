@@ -20,6 +20,12 @@ MonoBehaviour:
   castAnimDur: 0
   lockMoveOnCastAnim: 0
   lockRotateOnCastAnim: 0
+  castFlowType: 0
+  channelDuration: 0
+  channelTickInterval: 0
+  triggerChannelTickImmediately: 1
+  lockMoveDuringChannel: 1
+  lockRotateDuringChannel: 0
   maxCastRange: 10
   targetingMode: 0
   targetTeamRule: 0
@@ -31,7 +37,19 @@ MonoBehaviour:
   castFacingAngleTolerance: 5
   lockMovementDuringFacing: 1
   cancelFacingCastOnMoveInput: 1
+  useAimPreview: 1
+  previewShape: 0
+  previewAnchor: 0
+  previewRadius: 0
+  previewLength: 0
+  previewWidth: 0
+  previewAngle: 90
+  showCastRangeIndicator: 1
+  previewValidColor: {r: 0.2, g: 1, b: 0.45, a: 0.95}
+  previewInvalidColor: {r: 1, g: 0.25, b: 0.25, a: 0.95}
   effects:
   - {fileID: 11400000, guid: a8d361efbf019964d9f466c2c8885593, type: 2}
   - {fileID: 11400000, guid: 77bff7218adae234ca8f9a2188cf164f, type: 2}
   - {fileID: 11400000, guid: fc173ee0b2254f44b90bd2a95bec6d87, type: 2}
+  channelTickEffects: []
+  channelEndEffects: []

@@ -41,6 +41,7 @@ public class CharAnimCtrl : MonoBehaviour
     [SerializeField] private string _buffCastTrig = "Buff";
     [SerializeField] private string _dashCastTrig = "Dash";
     [SerializeField] private string _hitTrig = "";
+    [SerializeField] private string _channelBool = "Channeling";
 
     [Header("Status Layer")]
     [SerializeField] private bool _autoStatusAnim = true;
@@ -167,13 +168,13 @@ public class CharAnimCtrl : MonoBehaviour
 
     public void PlayAtk(string trig = null)
     {
-        string finalTrig = string.IsNullOrEmpty(trig) ? _atkTrig : trig;
+        string finalTrig = string.IsNullOrEmpty(trig) ? ResolveDefaultTrigger(_atkTrig, "Attack") : trig;
         SetTriggerSafe(_bodyAnim, finalTrig);
     }
 
     public void PlayHit(string trig = null)
     {
-        string finalTrig = string.IsNullOrEmpty(trig) ? _hitTrig : trig;
+        string finalTrig = string.IsNullOrEmpty(trig) ? ResolveDefaultTrigger(_hitTrig, string.Empty) : trig;
         SetTriggerSafe(_bodyAnim, finalTrig);
     }
 
@@ -313,22 +314,27 @@ public class CharAnimCtrl : MonoBehaviour
     {
         if (string.IsNullOrEmpty(key))
         {
-            return _castTrig;
+            return ResolveDefaultTrigger(_castTrig, "Cast");
         }
 
         switch (key)
         {
             case "Cast":
-                return _castTrig;
+                return ResolveDefaultTrigger(_castTrig, "Cast");
             case "Shoot":
-                return _shootCastTrig;
+                return ResolveDefaultTrigger(_shootCastTrig, "Shoot");
             case "Buff":
-                return _buffCastTrig;
+                return ResolveDefaultTrigger(_buffCastTrig, "Buff");
             case "Dash":
-                return _dashCastTrig;
+                return ResolveDefaultTrigger(_dashCastTrig, "Dash");
             default:
                 return key;
         }
+    }
+
+    private static string ResolveDefaultTrigger(string configured, string fallback)
+    {
+        return string.IsNullOrEmpty(configured) ? fallback : configured;
     }
 
     /// <summary>
@@ -368,6 +374,17 @@ public class CharAnimCtrl : MonoBehaviour
         SetBoolSafe(animator, _sleepBool, useSleep);
         SetBoolSafe(animator, _rootBool, useRoot);
         SetBoolSafe(animator, _silenceBool, useSilence);
+    }
+
+    private void ApplyActionState(CharActionSlice action)
+    {
+        if (!HasAnimatorCtrl(_bodyAnim))
+        {
+            return;
+        }
+
+        bool isChanneling = action != null && action.state == CharActionState.Channeling;
+        SetBoolSafe(_bodyAnim, _channelBool, isChanneling);
     }
 
     private void SetFloatSafe(Animator animator, string paramName, float value)
@@ -548,6 +565,8 @@ public class CharAnimCtrl : MonoBehaviour
         {
             ApplyStatusState(_blackBoard.Status.snapshot);
         }
+
+        ApplyActionState(_blackBoard.Action);
 
         bool isDead = _blackBoard.Action.isDead;
         if (_blackBoard.Features.useResources && _blackBoard.Resources.hasHealth)

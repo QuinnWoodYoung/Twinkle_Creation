@@ -23,6 +23,12 @@ public class Projectile : MonoBehaviour
     public Transform target;
     public float targetHeightOffset = 1.0f;
 
+    [Header("Ground Follow")]
+    public bool followGround = false;
+    public float groundOffset = 0.1f;
+    public float groundProbeHeight = 3f;
+    public float groundProbeDistance = 8f;
+
     /// <summary>
     /// 施法时继承下来的上下文。
     /// 命中时会基于它生成新的 impactContext。
@@ -63,15 +69,12 @@ public class Projectile : MonoBehaviour
                 return;
             }
 
-            transform.position += directionToTarget * moveStep;
-            if (directionToTarget != Vector3.zero)
-            {
-                transform.rotation = Quaternion.LookRotation(directionToTarget);
-            }
+            MoveProjectile(transform.position + directionToTarget * moveStep, directionToTarget);
         }
         else
         {
-            transform.position += transform.forward * speed * Time.deltaTime;
+            Vector3 direction = transform.forward;
+            MoveProjectile(transform.position + direction * speed * Time.deltaTime, direction);
         }
     }
 
@@ -136,5 +139,32 @@ public class Projectile : MonoBehaviour
 
             OnHit(hitUnit);
         }
+    }
+
+    private void MoveProjectile(Vector3 nextPosition, Vector3 direction)
+    {
+        if (followGround)
+        {
+            nextPosition.y = ResolveGroundHeight(nextPosition, nextPosition.y) + groundOffset;
+        }
+
+        transform.position = nextPosition;
+
+        direction.y = 0f;
+        if (direction.sqrMagnitude > 0.001f)
+        {
+            transform.rotation = Quaternion.LookRotation(direction.normalized);
+        }
+    }
+
+    private float ResolveGroundHeight(Vector3 samplePosition, float fallbackY)
+    {
+        Vector3 rayOrigin = samplePosition + Vector3.up * Mathf.Max(groundProbeHeight, 0.1f);
+        if (Physics.Raycast(rayOrigin, Vector3.down, out RaycastHit hit, Mathf.Max(groundProbeDistance, 0.1f), ~0, QueryTriggerInteraction.Ignore))
+        {
+            return hit.point.y;
+        }
+
+        return fallbackY - groundOffset;
     }
 }

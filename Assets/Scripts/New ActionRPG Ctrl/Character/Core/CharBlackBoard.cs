@@ -118,6 +118,9 @@ public sealed class CharSkillSlice
     public List<float> cooldowns = new List<float>();
     public bool pendingCast;
     public int pendingSlot = -1;
+    public bool channeling;
+    public int channelSlot = -1;
+    public float channelRemain;
 }
 
 [System.Serializable]
@@ -342,6 +345,9 @@ public class CharBlackBoard : MonoBehaviour
         {
             _skills.pendingCast = false;
             _skills.pendingSlot = -1;
+            _skills.channeling = false;
+            _skills.channelSlot = -1;
+            _skills.channelRemain = 0f;
 
             for (int i = 0; i < _skills.cooldowns.Count; i++)
             {

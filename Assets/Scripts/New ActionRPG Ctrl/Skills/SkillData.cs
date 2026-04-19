@@ -11,6 +11,13 @@ public enum SkillCastAnimType
     Dash,
 }
 
+public enum SkillCastFlowType
+{
+    Instant,
+    CastPointRelease,
+    Channel,
+}
+
 /// <summary>
 /// 技能配置配方。
 /// 一个 SkillData 负责定义施法规则，并按顺序执行 effect 链。
@@ -32,6 +39,20 @@ public class SkillData : ScriptableObject
     public bool lockMoveOnCastAnim = false;
     [Tooltip("施法动作期间是否锁转向。")]
     public bool lockRotateOnCastAnim = false;
+
+    [Header("Cast Flow")]
+    [Tooltip("Instant: 立即生效。CastPointRelease: 前摇结束后生效。Channel: 前摇结束后进入引导。")]
+    public SkillCastFlowType castFlowType = SkillCastFlowType.Instant;
+    [Tooltip("引导总时长。<= 0 表示进入引导后立刻结束。")]
+    [Min(0f)] public float channelDuration = 0f;
+    [Tooltip("引导期间 tick 间隔。<= 0 表示不执行周期效果。")]
+    [Min(0f)] public float channelTickInterval = 0f;
+    [Tooltip("进入引导后是否立即执行一次 tick。")]
+    public bool triggerChannelTickImmediately = true;
+    [Tooltip("引导期间是否锁移动。")]
+    public bool lockMoveDuringChannel = true;
+    [Tooltip("引导期间是否锁转向。")]
+    public bool lockRotateDuringChannel = false;
 
     /// <summary>
     /// 技能施法规则：
@@ -59,11 +80,28 @@ public class SkillData : ScriptableObject
     public bool lockMovementDuringFacing = true;
     [HideInInspector] public bool cancelFacingCastOnMoveInput = false;
 
+    [Header("Aim Preview")]
+    [Tooltip("False: quick cast like before. True: normal cast preview, then left-click confirm and right-click cancel.")]
+    public bool useAimPreview = false;
+    public SkillPreviewShape previewShape = SkillPreviewShape.Auto;
+    public SkillPreviewAnchor previewAnchor = SkillPreviewAnchor.Auto;
+    [Min(0f)] public float previewRadius = 0f;
+    [Min(0f)] public float previewLength = 0f;
+    [Min(0f)] public float previewWidth = 0f;
+    [Range(1f, 360f)] public float previewAngle = 90f;
+    public bool showCastRangeIndicator = true;
+    public Color previewValidColor = new Color(0.2f, 1f, 0.45f, 0.95f);
+    public Color previewInvalidColor = new Color(1f, 0.25f, 0.25f, 0.95f);
+
     /// <summary>
     /// 技能效果链。
     /// 顺序非常重要。
     /// </summary>
     public List<SkillEffect> effects = new List<SkillEffect>();
+    [Tooltip("仅用于引导技能：引导中的周期效果。")]
+    public List<SkillEffect> channelTickEffects = new List<SkillEffect>();
+    [Tooltip("仅用于引导技能：引导结束或被打断时执行。")]
+    public List<SkillEffect> channelEndEffects = new List<SkillEffect>();
 
     private void OnValidate()
     {
@@ -91,6 +129,16 @@ public class SkillData : ScriptableObject
         SkillEffectUtility.ExecuteEffects(effects, context);
 
         return true;
+    }
+
+    public bool IsChannelSkill()
+    {
+        return castFlowType == SkillCastFlowType.Channel;
+    }
+
+    public bool UsesCastPointRelease()
+    {
+        return castFlowType == SkillCastFlowType.CastPointRelease || castFlowType == SkillCastFlowType.Channel;
     }
 
     public string GetCastAnimKey()
