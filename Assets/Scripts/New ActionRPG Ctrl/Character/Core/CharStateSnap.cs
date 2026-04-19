@@ -3,6 +3,10 @@ using UnityEngine;
 [System.Serializable]
 // CharStateSnap is not the raw status list.
 // It is the folded result that other systems can consume directly.
+/// <summary>
+/// 状态快照。
+/// 它是所有运行时状态折叠后的结果，其他系统通常直接读这份快照，而不是遍历原始状态列表。
+/// </summary>
 public class CharStateSnap
 {
     public CharStateTag tags = CharStateTag.None;
@@ -26,6 +30,9 @@ public class CharStateSnap
     public bool canUnitTarget = true;
     public bool canAtkTarget = true;
 
+    /// <summary>
+    /// 重置成“没有任何状态影响”的默认值。
+    /// </summary>
     public void Reset()
     {
         tags = CharStateTag.None;

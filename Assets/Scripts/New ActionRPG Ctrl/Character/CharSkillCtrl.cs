@@ -6,6 +6,10 @@ using UnityEngine;
 /// 负责管理技能列表、冷却、输入读取，以及为每次施法创建 CastContext。
 /// 具体技能逻辑由 SkillData 和 SkillEffect 处理。
 /// </summary>
+/// <summary>
+/// 技能控制器。
+/// 它负责维护技能栏、冷却、输入读取、选目标、等待转向，以及最终调用 SkillData 激活技能。
+/// </summary>
 public class CharSkillCtrl : MonoBehaviour
 {
     /// <summary>
@@ -81,6 +85,9 @@ public class CharSkillCtrl : MonoBehaviour
     /// <summary>
     /// 读取技能按键信号并触发对应技能。
     /// </summary>
+    /// <summary>
+    /// 读取技能输入并尝试触发对应技能。
+    /// </summary>
     private void ProcessSkillInputs()
     {
         if (_hasPendingCast || _charCtrl == null || _charCtrl.Param == null)
@@ -107,6 +114,10 @@ public class CharSkillCtrl : MonoBehaviour
     /// <summary>
     /// 尝试释放指定槽位的技能。
     /// 成功时才进入冷却。
+    /// </summary>
+    /// <summary>
+    /// 尝试施放指定技能槽位。
+    /// 通过状态、冷却、能量、目标合法性检查后，才会真正进入施法。
     /// </summary>
     public void TryCastSkill(int skillIndex)
     {
@@ -157,6 +168,9 @@ public class CharSkillCtrl : MonoBehaviour
         ExecuteSkill(skillIndex, currentSkill, context);
     }
 
+    /// <summary>
+    /// 对需要先转向的技能，先进入 pending cast 阶段。
+    /// </summary>
     private bool TryBeginPendingCast(int skillIndex, SkillData skill, CastContext context)
     {
         Vector3 facingDirection = GetCastFacingDirection(context);
@@ -208,6 +222,10 @@ public class CharSkillCtrl : MonoBehaviour
         return true;
     }
 
+    /// <summary>
+    /// 轮询等待中的施法。
+    /// 一旦转向完成，就继续执行真正的技能释放。
+    /// </summary>
     private void UpdatePendingCast()
     {
         if (!_hasPendingCast || _pendingSkill == null || _pendingContext == null)
@@ -314,6 +332,9 @@ public class CharSkillCtrl : MonoBehaviour
         SyncBlackBoardSkillData();
     }
 
+    /// <summary>
+    /// 真正执行技能，并在成功后扣蓝和进入冷却。
+    /// </summary>
     private void ExecuteSkill(int skillIndex, SkillData skill, CastContext context)
     {
         if (skill == null || context == null)
@@ -368,6 +389,9 @@ public class CharSkillCtrl : MonoBehaviour
         return Mathf.Max(0f, baseDuration / Mathf.Max(castSpeed, 0.01f));
     }
 
+    /// <summary>
+    /// 把技能栏、冷却和 pending cast 状态同步回黑板。
+    /// </summary>
     private void SyncBlackBoardSkillData()
     {
         if (_blackBoard == null || !_blackBoard.Features.useSkills)

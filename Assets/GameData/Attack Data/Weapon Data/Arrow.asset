@@ -14,12 +14,12 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   attackRange: 0
   maxAttackRange: 0
-  attackSpeed: 1
+  rangedAttackSpeed: 1
   coolDown: 0.5
   attackTime: 0.5
   minDamage: 30
   maxDamage: 35
-  basicAttackMode: 1
+  basicAttackMode: 3
   attackAnimKey: Attack
   comboAnimKeys: []
   comboResetTime: 0.6

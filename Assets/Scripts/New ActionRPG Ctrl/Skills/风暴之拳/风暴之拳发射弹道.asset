@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a3a4c4fe76c2cf7408e7124798ca142d, type: 3}
   m_Name: "\u98CE\u66B4\u4E4B\u62F3\u53D1\u5C04\u5F39\u9053"
   m_EditorClassIdentifier: 
-  projectilePrefab: {fileID: 65303870977363813, guid: 242b73e08f35b524aaa1cdbc266a67d3, type: 3}
+  projectilePrefab: {fileID: 4151553148700812504, guid: f585021a68fe83e44822c2ad17aa8733, type: 3}
   spawnOffset: {x: 0, y: 1.5, z: 1}
   homingMode: 1
   minLaunchDistance: 2

@@ -66,6 +66,11 @@ public struct CharStatMod
 }
 
 [CreateAssetMenu(fileName = "CharStatusDef", menuName = "Char/Status Def")]
+/// <summary>
+/// 状态定义资产。
+/// 一条状态的数据面都写在这里：持续时间、叠层、限制、免疫、属性修正、VFX 配置。
+/// 运行时的 CharStatusCtrl 只负责消费这些数据。
+/// </summary>
 public class CharStatusDef : ScriptableObject
 {
     public string statusId;

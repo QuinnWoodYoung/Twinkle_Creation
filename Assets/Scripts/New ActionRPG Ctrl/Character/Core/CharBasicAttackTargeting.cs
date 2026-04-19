@@ -16,11 +16,18 @@ public struct BasicAttackTargetInfo
     public bool HasTarget => targetUnit != null;
 }
 
+/// <summary>
+/// 普攻目标解析工具。
+/// 目标选择始终先尊重玩家当前意图，再在这个方向附近做有限辅助瞄准。
+/// </summary>
 public static class CharBasicAttackTargeting
 {
     // Resolve a practical attack target for both Hades-like free attacks and
     // MOBA-like lock-on attacks. The system always starts from player intent
     // first, then only applies limited assistance around that intent.
+    /// <summary>
+    /// 为一次普攻解析最终目标、攻击点和攻击方向。
+    /// </summary>
     public static BasicAttackTargetInfo Resolve(
         GameObject attacker,
         CharCtrl charCtrl,
@@ -71,6 +78,10 @@ public static class CharBasicAttackTargeting
         return info;
     }
 
+    /// <summary>
+    /// 解析玩家当前想打向哪里。
+    /// 优先锁定目标，其次读 AimInput，最后退回角色 forward。
+    /// </summary>
     public static Vector3 ResolveAimDirection(GameObject attacker, CharCtrl charCtrl, bool useLockedAim = true)
     {
         GameObject attackerUnit = CharRelationResolver.NormalizeUnit(attacker);

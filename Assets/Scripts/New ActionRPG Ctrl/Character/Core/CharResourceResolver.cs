@@ -2,8 +2,8 @@ using UnityEngine;
 
 public static class CharResourceResolver
 {
-    // Resource access prefers blackboard slices so gameplay readers can move
-    // away from legacy StateManager one feature at a time.
+    // Resource access is now blackboard-owned. Legacy StateManager may still
+    // observe changes, but it is no longer the source of truth.
 
     public static AttackData_SO GetAttackData(GameObject obj)
     {
@@ -13,14 +13,13 @@ public static class CharResourceResolver
             return null;
         }
 
-        StateManager stateManager = unit.GetComponent<StateManager>();
-        if (stateManager != null && stateManager.attackData != null)
+        CharBlackBoard blackBoard = unit.GetComponent<CharBlackBoard>();
+        if (blackBoard == null || !blackBoard.Features.useCombat)
         {
-            return stateManager.attackData;
+            return null;
         }
 
-        CharBlackBoardInitializer initializer = unit.GetComponent<CharBlackBoardInitializer>();
-        return initializer != null ? initializer.AttackTemplate : null;
+        return blackBoard.Combat.attackData;
     }
 
     public static bool HasHealth(GameObject obj)
@@ -32,13 +31,9 @@ public static class CharResourceResolver
         }
 
         CharBlackBoard blackBoard = unit.GetComponent<CharBlackBoard>();
-        if (blackBoard != null)
-        {
-            return blackBoard.Features.useResources && blackBoard.Resources.hasHealth;
-        }
-
-        StateManager stateManager = unit.GetComponent<StateManager>();
-        return stateManager != null;
+        return blackBoard != null &&
+            blackBoard.Features.useResources &&
+            blackBoard.Resources.hasHealth;
     }
 
     public static float GetHitPoint(GameObject obj)
@@ -50,15 +45,11 @@ public static class CharResourceResolver
         }
 
         CharBlackBoard blackBoard = unit.GetComponent<CharBlackBoard>();
-        if (blackBoard != null)
-        {
-            return blackBoard.Features.useResources && blackBoard.Resources.hasHealth
+        return blackBoard != null &&
+            blackBoard.Features.useResources &&
+            blackBoard.Resources.hasHealth
                 ? blackBoard.Resources.hp
                 : 0f;
-        }
-
-        StateManager stateManager = unit.GetComponent<StateManager>();
-        return stateManager != null ? stateManager.HitPoint : 0f;
     }
 
     public static float GetMaxHitPoint(GameObject obj)
@@ -70,15 +61,11 @@ public static class CharResourceResolver
         }
 
         CharBlackBoard blackBoard = unit.GetComponent<CharBlackBoard>();
-        if (blackBoard != null)
-        {
-            return blackBoard.Features.useResources && blackBoard.Resources.hasHealth
+        return blackBoard != null &&
+            blackBoard.Features.useResources &&
+            blackBoard.Resources.hasHealth
                 ? blackBoard.Resources.maxHp
                 : 0f;
-        }
-
-        StateManager stateManager = unit.GetComponent<StateManager>();
-        return stateManager != null ? stateManager.MaxHitPoint : 0f;
     }
 
     public static bool HasEnergy(GameObject obj)
@@ -90,14 +77,9 @@ public static class CharResourceResolver
         }
 
         CharBlackBoard blackBoard = unit.GetComponent<CharBlackBoard>();
-        if (blackBoard != null)
-        {
-            return blackBoard.Features.useResources &&
-                blackBoard.Resources.hasEnergy;
-        }
-
-        StateManager stateManager = unit.GetComponent<StateManager>();
-        return stateManager != null && stateManager.MaxEnergy > 0f;
+        return blackBoard != null &&
+            blackBoard.Features.useResources &&
+            blackBoard.Resources.hasEnergy;
     }
 
     public static float GetEnergy(GameObject obj)
@@ -109,15 +91,11 @@ public static class CharResourceResolver
         }
 
         CharBlackBoard blackBoard = unit.GetComponent<CharBlackBoard>();
-        if (blackBoard != null)
-        {
-            return blackBoard.Features.useResources && blackBoard.Resources.hasEnergy
+        return blackBoard != null &&
+            blackBoard.Features.useResources &&
+            blackBoard.Resources.hasEnergy
                 ? blackBoard.Resources.energy
                 : 0f;
-        }
-
-        StateManager stateManager = unit.GetComponent<StateManager>();
-        return stateManager != null ? stateManager.Energy : 0f;
     }
 
     public static float GetMaxEnergy(GameObject obj)
@@ -129,15 +107,11 @@ public static class CharResourceResolver
         }
 
         CharBlackBoard blackBoard = unit.GetComponent<CharBlackBoard>();
-        if (blackBoard != null)
-        {
-            return blackBoard.Features.useResources && blackBoard.Resources.hasEnergy
+        return blackBoard != null &&
+            blackBoard.Features.useResources &&
+            blackBoard.Resources.hasEnergy
                 ? blackBoard.Resources.maxEnergy
                 : 0f;
-        }
-
-        StateManager stateManager = unit.GetComponent<StateManager>();
-        return stateManager != null ? stateManager.MaxEnergy : 0f;
     }
 
     public static bool HasEnoughEnergy(GameObject obj, float energyCost)
@@ -168,18 +142,6 @@ public static class CharResourceResolver
             return false;
         }
 
-        StateManager stateManager = unit.GetComponent<StateManager>();
-        if (stateManager != null && stateManager.enabled)
-        {
-            if (stateManager.MaxEnergy <= 0f || stateManager.Energy < energyCost)
-            {
-                return false;
-            }
-
-            stateManager.Energy -= Mathf.Max(0f, energyCost);
-            return true;
-        }
-
         CharBlackBoard blackBoard = unit.GetComponent<CharBlackBoard>();
         if (blackBoard == null ||
             !blackBoard.Features.useResources ||
@@ -203,29 +165,18 @@ public static class CharResourceResolver
         }
 
         CharBlackBoard blackBoard = unit.GetComponent<CharBlackBoard>();
-        if (blackBoard != null)
+        if (blackBoard == null || !blackBoard.Features.useCombat)
         {
-            if (!blackBoard.Features.useCombat)
-            {
-                return 0f;
-            }
-
-            float finalDamage = blackBoard.Combat.attackPower;
-            if (blackBoard.Combat.isCritical && blackBoard.Combat.criticalAttackPower > 0f)
-            {
-                finalDamage = blackBoard.Combat.criticalAttackPower;
-            }
-
-            return Mathf.Max(finalDamage, 0f);
+            return 0f;
         }
 
-        StateManager stateManager = unit.GetComponent<StateManager>();
-        if (stateManager != null)
+        float finalDamage = blackBoard.Combat.attackPower;
+        if (blackBoard.Combat.isCritical && blackBoard.Combat.criticalAttackPower > 0f)
         {
-            return stateManager.GetBasicAttackDamage();
+            finalDamage = blackBoard.Combat.criticalAttackPower;
         }
 
-        return 0f;
+        return Mathf.Max(finalDamage, 0f);
     }
 
     public static float GetRangedAttackSpeed(GameObject obj)
@@ -237,26 +188,18 @@ public static class CharResourceResolver
         }
 
         CharBlackBoard blackBoard = unit.GetComponent<CharBlackBoard>();
-        if (blackBoard != null)
+        if (blackBoard == null || !blackBoard.Features.useCombat)
         {
-            if (!blackBoard.Features.useCombat)
-            {
-                return 0f;
-            }
-
-            float finalAttackSpeed = blackBoard.Combat.rangedAttackSpeed;
-            if (blackBoard.Combat.attackSpeedMul > 0f)
-            {
-                finalAttackSpeed *= blackBoard.Combat.attackSpeedMul;
-            }
-
-            return Mathf.Max(finalAttackSpeed, 0f);
+            return 0f;
         }
 
-        AttackData_SO attackData = GetAttackData(unit);
-        return attackData != null
-            ? Mathf.Max(attackData.rangedAttackSpeed, 0f)
-            : 0f;
+        float finalAttackSpeed = blackBoard.Combat.rangedAttackSpeed;
+        if (blackBoard.Combat.attackSpeedMul > 0f)
+        {
+            finalAttackSpeed *= blackBoard.Combat.attackSpeedMul;
+        }
+
+        return Mathf.Max(finalAttackSpeed, 0f);
     }
 
     public static float GetAttackSpeed(GameObject obj)
@@ -273,16 +216,8 @@ public static class CharResourceResolver
         }
 
         CharBlackBoard blackBoard = unit.GetComponent<CharBlackBoard>();
-        if (blackBoard != null)
-        {
-            return blackBoard.Features.useCombat
-                ? Mathf.Max(blackBoard.Combat.attackRange, 0f)
-                : 0f;
-        }
-
-        AttackData_SO attackData = GetAttackData(unit);
-        return attackData != null
-            ? Mathf.Max(attackData.attackRange, 0f)
+        return blackBoard != null && blackBoard.Features.useCombat
+            ? Mathf.Max(blackBoard.Combat.attackRange, 0f)
             : 0f;
     }
 
@@ -295,16 +230,8 @@ public static class CharResourceResolver
         }
 
         CharBlackBoard blackBoard = unit.GetComponent<CharBlackBoard>();
-        if (blackBoard != null)
-        {
-            return blackBoard.Features.useCombat
-                ? Mathf.Max(blackBoard.Combat.maxAttackRange, 0f)
-                : 0f;
-        }
-
-        AttackData_SO attackData = GetAttackData(unit);
-        return attackData != null
-            ? Mathf.Max(attackData.maxAttackRange, 0f)
+        return blackBoard != null && blackBoard.Features.useCombat
+            ? Mathf.Max(blackBoard.Combat.maxAttackRange, 0f)
             : 0f;
     }
 
@@ -317,16 +244,8 @@ public static class CharResourceResolver
         }
 
         CharBlackBoard blackBoard = unit.GetComponent<CharBlackBoard>();
-        if (blackBoard != null)
-        {
-            return blackBoard.Features.useCombat
-                ? Mathf.Max(blackBoard.Combat.attackCooldown, 0f)
-                : 0f;
-        }
-
-        AttackData_SO attackData = GetAttackData(unit);
-        return attackData != null
-            ? Mathf.Max(attackData.coolDown, 0f)
+        return blackBoard != null && blackBoard.Features.useCombat
+            ? Mathf.Max(blackBoard.Combat.attackCooldown, 0f)
             : 0f;
     }
 
@@ -336,15 +255,6 @@ public static class CharResourceResolver
         if (unit == null)
         {
             return false;
-        }
-
-        StateManager stateManager = unit.GetComponent<StateManager>();
-        if (stateManager != null && stateManager.enabled)
-        {
-            // Prefer the legacy runtime owner while it still exists, because it
-            // also drives hit react, break-on-damage, and legacy HP listeners.
-            stateManager.TakeDamage(damageAmount);
-            return true;
         }
 
         CharBlackBoard blackBoard = unit.GetComponent<CharBlackBoard>();
@@ -369,9 +279,22 @@ public static class CharResourceResolver
             return false;
         }
 
+        finalDamage *= ResolveDamageTakenMultiplier(blackBoard);
+        if (finalDamage <= 0f)
+        {
+            return false;
+        }
+
         blackBoard.Resources.hp = Mathf.Max(0f, blackBoard.Resources.hp - finalDamage);
         blackBoard.Action.isDead = blackBoard.Resources.hp <= 0f;
         blackBoard.MarkRuntimeChanged(CharBlackBoardChangeMask.Resources | CharBlackBoardChangeMask.Action);
+
+        StateManager stateManager = unit.GetComponent<StateManager>();
+        if (stateManager != null && stateManager.enabled)
+        {
+            stateManager.NotifyBlackboardDamageApplied(finalDamage);
+        }
+
         return true;
     }
 
@@ -381,13 +304,6 @@ public static class CharResourceResolver
         if (unit == null)
         {
             return false;
-        }
-
-        StateManager stateManager = unit.GetComponent<StateManager>();
-        if (stateManager != null && stateManager.enabled)
-        {
-            stateManager.ApplyHealth(Mathf.RoundToInt(healAmount));
-            return true;
         }
 
         CharBlackBoard blackBoard = unit.GetComponent<CharBlackBoard>();
@@ -410,6 +326,33 @@ public static class CharResourceResolver
         blackBoard.Resources.hp = Mathf.Min(blackBoard.Resources.hp + finalHeal, blackBoard.Resources.maxHp);
         blackBoard.Action.isDead = blackBoard.Resources.hp <= 0f;
         blackBoard.MarkRuntimeChanged(CharBlackBoardChangeMask.Resources | CharBlackBoardChangeMask.Action);
+
+        StateManager stateManager = unit.GetComponent<StateManager>();
+        if (stateManager != null && stateManager.enabled)
+        {
+            stateManager.NotifyBlackboardHealthChanged();
+        }
+
         return true;
+    }
+
+    private static float ResolveDamageTakenMultiplier(CharBlackBoard blackBoard)
+    {
+        if (blackBoard == null)
+        {
+            return 1f;
+        }
+
+        if (blackBoard.Features.useCombat && blackBoard.Combat.damageTakenMul > 0f)
+        {
+            return blackBoard.Combat.damageTakenMul;
+        }
+
+        if (blackBoard.Features.useStatus && blackBoard.Status.snapshot != null)
+        {
+            return Mathf.Max(0f, blackBoard.Status.snapshot.dmgTakenMul);
+        }
+
+        return 1f;
     }
 }

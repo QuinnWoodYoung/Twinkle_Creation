@@ -1,6 +1,10 @@
 ﻿using UnityEngine;
 
 [DisallowMultipleComponent]
+/// <summary>
+/// 武器与普通攻击控制器。
+/// 它负责当前武器状态、普攻输入、普攻模式切换、武器动画、投射物与攻击 VFX。
+/// </summary>
 public class CharWeaponCtrl : MonoBehaviour
 {
     // Fired after the logical weapon state is fully synchronized.
@@ -15,6 +19,7 @@ public class CharWeaponCtrl : MonoBehaviour
     private float _attackCooldownRemain;
     private BasicAttackMode _resolvedAttackMode = BasicAttackMode.MeleeCombo;
     private int _comboIndex;
+    private int _activeComboStageIndex = -1;
     private float _comboResetRemain;
     private bool _isChargingBasicAttack;
     private float _chargeHoldTime;
@@ -25,6 +30,7 @@ public class CharWeaponCtrl : MonoBehaviour
     [SerializeField] public WeaponType _currentWeapon;
 
     public WeaponType CurWeapon => _currentWeapon;
+    public int ActiveMeleeComboStageIndex => _activeComboStageIndex;
 
     [Header("Legacy Projectile Fallback")]
     [SerializeField] private GameObject bulletPrefab;
@@ -150,6 +156,10 @@ public class CharWeaponCtrl : MonoBehaviour
 
     // ──────────────────── Attack Input ────────────────────
 
+    /// <summary>
+    /// 普攻输入主入口。
+    /// 会根据当前普攻模式切到近战连段、远程连射或蓄力释放分支。
+    /// </summary>
     private void UpdateAtkInput()
     {
         if (_charCtrl == null || _charCtrl.Param == null)
@@ -208,8 +218,14 @@ public class CharWeaponCtrl : MonoBehaviour
 
     // ──────────────────── Light Attack ────────────────────
 
+    /// <summary>
+    /// 尝试发起一次轻攻击。
+    /// </summary>
     private bool TryLightAtk(AttackData_SO profile, string animKey = null)
     {
+        if (!CanStartResolvedAttack(profile, _resolvedAttackMode))
+            return false;
+
         string finalAnimKey = string.IsNullOrEmpty(animKey) ? _lightAtkTrig : animKey;
         float dur = ResolveAttackDuration(profile);
         bool lockMove = !CanMoveWhileAttacking(profile);
@@ -270,14 +286,22 @@ public class CharWeaponCtrl : MonoBehaviour
 
     // ──────────────────── Combo Attack ────────────────────
 
+    /// <summary>
+    /// 近战连段普攻入口。
+    /// </summary>
     private void TryComboAtk(AttackData_SO profile)
     {
-        string comboAnimKey = ResolveComboAnimKey(profile);
+        if (!CanStartResolvedAttack(profile, _resolvedAttackMode))
+            return;
+
+        string comboAnimKey = ResolveComboAnimKey(profile, out int comboStageIndex);
         bool lockMove = !CanMoveWhileAttacking(profile);
 
         if (!TryStartAtk(comboAnimKey, Mathf.Max(0.01f, _lightAtkDur),
                 lockMove, _lightAtkLockRotate, false, true))
             return;
+
+        _activeComboStageIndex = comboStageIndex;
 
         if (_actionCtrl == null)
         {
@@ -293,13 +317,16 @@ public class CharWeaponCtrl : MonoBehaviour
             ? profile.comboResetTime : 0.6f;
     }
 
-    private string ResolveComboAnimKey(AttackData_SO profile)
+    private string ResolveComboAnimKey(AttackData_SO profile, out int comboStageIndex)
     {
+        comboStageIndex = 0;
+
         if (profile == null || profile.comboAnimKeys == null || profile.comboAnimKeys.Length == 0)
             return _comboAtkTrig;
 
         int slot = _comboResetRemain > 0f ? _comboIndex : 0;
         slot = Mathf.Clamp(slot, 0, profile.comboAnimKeys.Length - 1);
+        comboStageIndex = slot;
         string key = profile.comboAnimKeys[slot];
         return string.IsNullOrEmpty(key) ? _comboAtkTrig : key;
     }
@@ -355,6 +382,10 @@ public class CharWeaponCtrl : MonoBehaviour
 
     // ──────────────────── Play Attack ────────────────────
 
+    /// <summary>
+    /// 普攻真正开始时的表现层逻辑：
+    /// 选目标、强制转向、播放武器动画、生成攻击 VFX、发射投射物。
+    /// </summary>
     private void PlayAtk(string trig)
     {
         AttackData_SO profile = ResolveAttackProfile();
@@ -558,6 +589,7 @@ public class CharWeaponCtrl : MonoBehaviour
             if (_resolvedAttackMode == BasicAttackMode.MeleeCombo)
             {
                 _comboIndex = 0;
+                _activeComboStageIndex = -1;
                 _comboResetRemain = 0f;
                 _meleeComboAimGraceRemain = 0f;
             }
@@ -608,8 +640,25 @@ public class CharWeaponCtrl : MonoBehaviour
         return profile != null && profile.attackTime > 0f ? profile.attackTime : _lightAtkDur;
     }
 
+    private bool CanStartResolvedAttack(AttackData_SO profile, BasicAttackMode attackMode)
+    {
+        if (!RequiresResolvedTarget(attackMode))
+            return true;
+
+        BasicAttackTargetInfo targetInfo = ResolveBasicAttackTarget(profile, attackMode);
+        return targetInfo.HasTarget;
+    }
+
+    private static bool RequiresResolvedTarget(BasicAttackMode attackMode)
+    {
+        return attackMode == BasicAttackMode.RangedHoming;
+    }
+
     // ──────────────────── Targeting ────────────────────
 
+    /// <summary>
+    /// 为这次普攻解析最终目标、攻击点和攻击方向。
+    /// </summary>
     private BasicAttackTargetInfo ResolveBasicAttackTarget(AttackData_SO profile, BasicAttackMode attackMode)
     {
         if (_charCtrl == null) return default;
@@ -845,12 +894,14 @@ public class CharWeaponCtrl : MonoBehaviour
 
     private void BeginAttackCooldown(float fallbackDuration)
     {
-        float explicitCooldown = CharResourceResolver.GetAttackCooldown(gameObject);
-        bool useRangedAttackSpeed =
+        bool isRangedAttack =
             _resolvedAttackMode == BasicAttackMode.RangedStraight ||
             _resolvedAttackMode == BasicAttackMode.RangedHoming ||
             _resolvedAttackMode == BasicAttackMode.RangedChargeRelease;
-        float rangedAttackSpeed = useRangedAttackSpeed
+        float explicitCooldown = isRangedAttack
+            ? CharResourceResolver.GetAttackCooldown(gameObject)
+            : 0f;
+        float rangedAttackSpeed = isRangedAttack
             ? CharResourceResolver.GetRangedAttackSpeed(gameObject)
             : 0f;
 
@@ -881,6 +932,9 @@ public class CharWeaponCtrl : MonoBehaviour
 
     // ──────────────────── Blackboard ────────────────────
 
+    /// <summary>
+    /// 把当前武器类型和武器根节点同步回黑板。
+    /// </summary>
     private void SyncBlackBoardWeapon()
     {
         if (_blackBoard == null || !_blackBoard.Features.useEquipment) return;

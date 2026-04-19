@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   attackRange: 0
   maxAttackRange: 0
-  attackSpeed: 5
+  rangedAttackSpeed: 5
   coolDown: 0
   attackTime: 0
   minDamage: 30
@@ -53,7 +53,7 @@ MonoBehaviour:
   maxChargeTime: 1.2
   chargeReleaseAnimKey: Attack
   attackCastVfx: {fileID: 0}
-  attackHitVfx: {fileID: 6750108211637369354, guid: 34f3a8b34366bc5469ddbf9e468212fa, type: 3}
+  attackHitVfx: {fileID: 1835174905073365006, guid: adfd6c86cf180e64aaaa1bece2395926, type: 3}
   attackVfxPointName: BasicAttack VFX
   projectileSpawnPointName: 
   preferOwnerAttackVfxPoint: 1
@@ -63,3 +63,8 @@ MonoBehaviour:
   attackHitVfxLifetime: 2
   attackCastVfxOffset: {x: 0, y: 0, z: 0}
   attackHitVfxOffset: {x: 0, y: 0, z: 0}
+  meleeSlashVfxEntries:
+  - typeId: Fan
+    prefab: {fileID: 3724192508554018546, guid: 498b54ff0b2200846836986d0c22bd85, type: 3}
+  - typeId: 1
+    prefab: {fileID: 1737387875744588960, guid: b65542e2c1b9d344d8d4e3573cf120ba, type: 3}

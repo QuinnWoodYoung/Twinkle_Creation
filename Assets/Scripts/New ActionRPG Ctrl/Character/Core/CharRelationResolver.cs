@@ -26,13 +26,6 @@ public static class CharRelationResolver
             return true;
         }
 
-        StateManager stateManager = obj.GetComponentInParent<StateManager>();
-        if (stateManager != null)
-        {
-            unit = stateManager.gameObject;
-            return true;
-        }
-
         Team team = obj.GetComponentInParent<Team>();
         if (team != null)
         {
@@ -104,23 +97,17 @@ public static class CharRelationResolver
         }
 
         CharBlackBoard blackBoard = targetUnit.GetComponent<CharBlackBoard>();
-        if (blackBoard != null)
+        if (blackBoard == null)
         {
-            if (blackBoard.Features.useResources && blackBoard.Resources.hasHealth)
-            {
-                return blackBoard.Resources.hp > 0f;
-            }
-
-            return !blackBoard.Action.isDead;
+            return false;
         }
 
-        StateManager stateManager = targetUnit.GetComponent<StateManager>();
-        if (stateManager != null)
+        if (blackBoard.Features.useResources && blackBoard.Resources.hasHealth)
         {
-            return !stateManager.isDead && stateManager.HitPoint > 0f;
+            return blackBoard.Resources.hp > 0f;
         }
 
-        return true;
+        return !blackBoard.Action.isDead;
     }
 
     public static bool CanReceiveBasicAttack(GameObject attacker, GameObject target)

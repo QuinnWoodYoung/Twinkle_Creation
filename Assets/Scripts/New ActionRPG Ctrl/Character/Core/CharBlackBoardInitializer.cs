@@ -28,6 +28,7 @@ public class CharBlackBoardInitializer : MonoBehaviour
     }
 
     [Header("Bootstrap")]
+    // 这份组件是黑板的初始化入口：把检视面板、模板数据、旧系统数据写进黑板。
     [Tooltip("Auto initialize on Awake when this unit does not use StateManager.")]
     [SerializeField] private bool _initializeOnAwake = true;
 
@@ -134,6 +135,10 @@ public class CharBlackBoardInitializer : MonoBehaviour
     /// Initialize blackboard from authored values, optionally merging legacy
     /// runtime data exposed by StateManager.
     /// </summary>
+    /// <summary>
+    /// 黑板初始化总入口。
+    /// 顺序上先同步场景，再写入模块开关、身份、资源和战斗基线。
+    /// </summary>
     public void Initialize(StateManager stateManager)
     {
         CacheBlackBoard();
@@ -157,6 +162,21 @@ public class CharBlackBoardInitializer : MonoBehaviour
             CharBlackBoardChangeMask.Combat);
     }
 
+    public void ApplyCombatBaseline()
+    {
+        CacheBlackBoard();
+        if (_blackBoard == null || !_blackBoard.Features.useCombat)
+        {
+            return;
+        }
+
+        ApplyCombat(null);
+        _blackBoard.MarkRuntimeChanged(CharBlackBoardChangeMask.Combat);
+    }
+
+    /// <summary>
+    /// 应用模块开关覆盖。
+    /// </summary>
     private void ApplyFeatures()
     {
         if (!_applyFeatureOverrides)
@@ -172,6 +192,10 @@ public class CharBlackBoardInitializer : MonoBehaviour
         _blackBoard.Features.useTargeting = _featureOverrides.useTargeting;
     }
 
+    /// <summary>
+    /// 初始化身份信息。
+    /// Team 组件优先级高于手填 teamId / teamSide。
+    /// </summary>
     private void ApplyIdentity(StateManager stateManager)
     {
         CharIdentitySlice identity = _blackBoard.Identity;
@@ -216,6 +240,10 @@ public class CharBlackBoardInitializer : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// 初始化生命/能量面板。
+    /// 有 StateManager 时优先复用旧系统当前值，否则退回到模板或面板配置。
+    /// </summary>
     private void ApplyResources(StateManager stateManager)
     {
         if (!_blackBoard.Features.useResources)
@@ -286,6 +314,9 @@ public class CharBlackBoardInitializer : MonoBehaviour
             : 0f;
     }
 
+    /// <summary>
+    /// 初始化攻击模板和战斗基线数据。
+    /// </summary>
     private void ApplyCombat(StateManager stateManager)
     {
         if (!_blackBoard.Features.useCombat)
@@ -295,59 +326,63 @@ public class CharBlackBoardInitializer : MonoBehaviour
 
         AttackData_SO attackSource = ResolveAttackSource(stateManager);
         CharCombatSlice combat = _blackBoard.Combat;
+        AttackData_SO runtimeAttackData = CharCombatRuntimeUtility.AssignAttackData(
+            _blackBoard,
+            attackSource,
+            stateManager == null);
 
         if (_attackPower >= 0f)
         {
             combat.attackPower = Mathf.Max(0f, _attackPower);
         }
-        else if (attackSource != null)
+        else if (runtimeAttackData != null)
         {
-            combat.attackPower = Mathf.Max(0f, attackSource.minDamage);
+            combat.attackPower = Mathf.Max(0f, runtimeAttackData.minDamage);
         }
 
         if (_criticalAttackPower >= 0f)
         {
             combat.criticalAttackPower = Mathf.Max(0f, _criticalAttackPower);
         }
-        else if (attackSource != null)
+        else if (runtimeAttackData != null)
         {
-            combat.criticalAttackPower = Mathf.Max(0f, attackSource.maxDamage);
+            combat.criticalAttackPower = Mathf.Max(0f, runtimeAttackData.maxDamage);
         }
 
         if (_rangedAttackSpeed >= 0f)
         {
             combat.rangedAttackSpeed = Mathf.Max(0f, _rangedAttackSpeed);
         }
-        else if (attackSource != null)
+        else if (runtimeAttackData != null)
         {
-            combat.rangedAttackSpeed = Mathf.Max(0f, attackSource.rangedAttackSpeed);
+            combat.rangedAttackSpeed = Mathf.Max(0f, runtimeAttackData.rangedAttackSpeed);
         }
 
         if (_attackRange >= 0f)
         {
             combat.attackRange = Mathf.Max(0f, _attackRange);
         }
-        else if (attackSource != null)
+        else if (runtimeAttackData != null)
         {
-            combat.attackRange = Mathf.Max(0f, attackSource.attackRange);
+            combat.attackRange = Mathf.Max(0f, runtimeAttackData.attackRange);
         }
 
         if (_maxAttackRange >= 0f)
         {
             combat.maxAttackRange = Mathf.Max(0f, _maxAttackRange);
         }
-        else if (attackSource != null)
+        else if (runtimeAttackData != null)
         {
-            combat.maxAttackRange = Mathf.Max(0f, attackSource.maxAttackRange);
+            combat.maxAttackRange = Mathf.Max(0f, runtimeAttackData.maxAttackRange);
         }
 
         if (_attackCooldown >= 0f)
         {
             combat.attackCooldown = Mathf.Max(0f, _attackCooldown);
         }
-        else if (attackSource != null)
+        else if (runtimeAttackData != null)
         {
-            combat.attackCooldown = Mathf.Max(0f, attackSource.coolDown);
+            combat.attackCooldown = Mathf.Max(0f, runtimeAttackData.coolDown);
         }
 
         if (_castSpeed >= 0f)
@@ -394,6 +429,10 @@ public class CharBlackBoardInitializer : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// 给纯黑板角色补上开场状态。
+    /// 依然走 CharStatusCtrl，是为了统一叠层、互斥和快照逻辑。
+    /// </summary>
     private void ApplyInitialStatuses()
     {
         if (_initialStatusesApplied || _initialLegacyStatuses == null || _initialLegacyStatuses.Count == 0)

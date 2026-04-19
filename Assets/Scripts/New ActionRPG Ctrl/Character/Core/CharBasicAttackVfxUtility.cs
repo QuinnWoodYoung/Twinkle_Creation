@@ -1,5 +1,9 @@
 using UnityEngine;
 
+/// <summary>
+/// 普攻命中特效工具。
+/// 负责把命中 VFX 生在目标身上或命中点上。
+/// </summary>
 public static class CharBasicAttackVfxUtility
 {
     public static void PlayHitVfx(AttackData_SO profile, Vector3 impactPoint, GameObject targetUnit)

@@ -1,6 +1,10 @@
 using System;
 
 [Flags]
+/// <summary>
+/// 状态快照里的“行为限制位”。
+/// 某条状态写入的限制最终会汇总到 CharStateSnap.restricts。
+/// </summary>
 public enum CharRestrict
 {
     None = 0,

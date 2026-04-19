@@ -1,6 +1,10 @@
 ﻿using UnityEngine;
 
 [DisallowMultipleComponent]
+/// <summary>
+/// 身体动画控制器。
+/// 它只负责角色本体 Animator，不负责武器 prefab 上的独立动画。
+/// </summary>
 public class CharAnimCtrl : MonoBehaviour
 {
     [System.Serializable]
@@ -118,6 +122,10 @@ public class CharAnimCtrl : MonoBehaviour
         CacheBodyAnim();
     }
 
+    /// <summary>
+    /// 写入移动动画参数。
+    /// 八方向角色会区分前后左右，非八方向角色只保留前进强度。
+    /// </summary>
     public void SetMove(Vector3 moveDir, bool canMove, bool isLock, Transform lockedTarget)
     {
         Animator animator = _bodyAnim;
@@ -188,6 +196,9 @@ public class CharAnimCtrl : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// 动作开始时，根据动作类型触发攻击/施法/受击动画。
+    /// </summary>
     private void OnActionStart(CharActionReq req)
     {
         if (req == null)
@@ -320,6 +331,9 @@ public class CharAnimCtrl : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// 根据状态快照写入身体 Animator 的状态层布尔值。
+    /// </summary>
     private void ApplyStatusState(CharStateSnap snap)
     {
         if (!_autoStatusAnim)
@@ -514,6 +528,9 @@ public class CharAnimCtrl : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// 从黑板拉取装备、状态和死亡结果来刷新表现。
+    /// </summary>
     private void PollBlackBoardState()
     {
         if (_blackBoard == null)

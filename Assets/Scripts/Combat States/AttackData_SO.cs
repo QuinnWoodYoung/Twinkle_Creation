@@ -1,5 +1,6 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
+using System;
 using UnityEngine;
 using UnityEngine.Serialization;
 
@@ -9,6 +10,14 @@ public enum BasicAttackMode
     RangedStraight,
     RangedHoming,
     RangedChargeRelease,
+}
+
+[Serializable]
+public sealed class MeleeSlashVfxEntry
+{
+    [Tooltip("Slash type id, for example Fan or Thrust.")]
+    public string typeId = "Fan";
+    public GameObject prefab;
 }
 
 [CreateAssetMenu(fileName = "New Attack", menuName = "Attack")]
@@ -95,6 +104,10 @@ public class AttackData_SO : ScriptableObject
     public Vector3 attackCastVfxOffset;
     public Vector3 attackHitVfxOffset;
 
+    [Header("Melee Slash VFX")]
+    [Tooltip("Extensible slash VFX table. Characters can pick by type id, for example Fan or Thrust.")]
+    public MeleeSlashVfxEntry[] meleeSlashVfxEntries;
+
     public void ApplyWeaponData(AttackData_SO weapon)
     {
         if (weapon == null)
@@ -154,5 +167,61 @@ public class AttackData_SO : ScriptableObject
         attackHitVfxLifetime = weapon.attackHitVfxLifetime;
         attackCastVfxOffset = weapon.attackCastVfxOffset;
         attackHitVfxOffset = weapon.attackHitVfxOffset;
+        meleeSlashVfxEntries = CloneMeleeSlashVfxEntries(weapon.meleeSlashVfxEntries);
+    }
+
+    public GameObject ResolveMeleeSlashVfx(string typeId)
+    {
+        if (meleeSlashVfxEntries != null && meleeSlashVfxEntries.Length > 0)
+        {
+            string normalizedTypeId = string.IsNullOrWhiteSpace(typeId) ? string.Empty : typeId.Trim();
+
+            for (int i = 0; i < meleeSlashVfxEntries.Length; i++)
+            {
+                MeleeSlashVfxEntry entry = meleeSlashVfxEntries[i];
+                if (entry == null || entry.prefab == null)
+                {
+                    continue;
+                }
+
+                if (string.IsNullOrEmpty(normalizedTypeId))
+                {
+                    return entry.prefab;
+                }
+
+                if (string.Equals(entry.typeId, normalizedTypeId, StringComparison.OrdinalIgnoreCase))
+                {
+                    return entry.prefab;
+                }
+            }
+        }
+
+        return null;
+    }
+
+    private static MeleeSlashVfxEntry[] CloneMeleeSlashVfxEntries(MeleeSlashVfxEntry[] source)
+    {
+        if (source == null || source.Length == 0)
+        {
+            return null;
+        }
+
+        MeleeSlashVfxEntry[] cloned = new MeleeSlashVfxEntry[source.Length];
+        for (int i = 0; i < source.Length; i++)
+        {
+            MeleeSlashVfxEntry entry = source[i];
+            if (entry == null)
+            {
+                continue;
+            }
+
+            cloned[i] = new MeleeSlashVfxEntry
+            {
+                typeId = entry.typeId,
+                prefab = entry.prefab,
+            };
+        }
+
+        return cloned;
     }
 }

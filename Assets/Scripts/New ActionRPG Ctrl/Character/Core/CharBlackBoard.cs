@@ -84,6 +84,10 @@ public sealed class CharResourceSlice
 [System.Serializable]
 public sealed class CharCombatSlice
 {
+    // Runtime attack profile consumed by basic-attack systems.
+    public AttackData_SO attackData;
+    // True when attackData is a runtime clone that blackboard should destroy.
+    public bool ownsAttackDataInstance;
     public float attackPower = 10f;
     public float criticalAttackPower = 10f;
     [FormerlySerializedAs("attackSpeed")] public float rangedAttackSpeed = 1f;
@@ -172,6 +176,14 @@ public struct CharBlackBoardSyncStamp
 }
 
 [DisallowMultipleComponent]
+/// <summary>
+/// 单个角色的运行时共享数据中心。
+/// 它本身几乎不做玩法判断，主要负责存放各系统共享的数据切片，
+/// 并在数据变化时广播 RuntimeChanged 事件。
+/// 
+/// 读这套新角色控制器时，可以把它理解为“角色黑板”：
+/// 输入、移动、动作、血蓝、战斗参数、状态、技能、装备、目标信息最终都会汇总到这里。
+/// </summary>
 public class CharBlackBoard : MonoBehaviour
 {
     // CharBlackBoard is the single runtime data source for one character.
@@ -183,15 +195,18 @@ public class CharBlackBoard : MonoBehaviour
     public event Action<CharBlackBoard, CharBlackBoardChangeMask> RuntimeChanged;
 
     [Header("Features")]
+    // 模块总开关：决定这个单位是否启用资源、战斗、状态、技能等系统。
     [SerializeField] private CharFeatureSet _features = new CharFeatureSet();
 
     [Header("Always-On Data")]
+    // 基础运行数据：角色身份、位置朝向、移动输入、动作态等。
     [SerializeField] private CharIdentitySlice _identity = new CharIdentitySlice();
     [SerializeField] private CharTransformSlice _transformState = new CharTransformSlice();
     [SerializeField] private CharMotionSlice _motion = new CharMotionSlice();
     [SerializeField] private CharActionSlice _action = new CharActionSlice();
 
     [Header("Optional Data")]
+    // 可选模块数据：是否真正参与运行由 Features 中的开关决定。
     [SerializeField] private CharResourceSlice _resources = new CharResourceSlice();
     [SerializeField] private CharCombatSlice _combat = new CharCombatSlice();
     [SerializeField] private CharStatusSlice _status = new CharStatusSlice();
@@ -244,6 +259,10 @@ public class CharBlackBoard : MonoBehaviour
         SyncFromScene();
     }
 
+    /// <summary>
+    /// 把场景对象上天然存在的信息回写到黑板。
+    /// 这里只同步 transform / team 这类客观数据，不负责玩法推导。
+    /// </summary>
     public void SyncFromScene()
     {
         CharBlackBoardChangeMask changed = CharBlackBoardChangeMask.None;
@@ -279,6 +298,10 @@ public class CharBlackBoard : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// 清理一轮运行中的临时状态，常用于重生/重置。
+    /// 这里不会清掉基础配置，只清空动态数据。
+    /// </summary>
     public void ClearRuntimeData()
     {
         // Clear only transient runtime data. This is useful for respawn/reset flows.
@@ -342,6 +365,10 @@ public class CharBlackBoard : MonoBehaviour
             CharBlackBoardChangeMask.Targeting);
     }
 
+    /// <summary>
+    /// 统一的“黑板数据已更新”出口。
+    /// revision 主要给未来的网络、UI、回放系统留接口。
+    /// </summary>
     public void MarkRuntimeChanged(CharBlackBoardChangeMask changeMask)
     {
         if (changeMask == CharBlackBoardChangeMask.None)
@@ -367,6 +394,9 @@ public class CharBlackBoard : MonoBehaviour
         };
     }
 
+    /// <summary>
+    /// 在未显式配置时，用当前 GameObject 自动补齐基础身份信息。
+    /// </summary>
     private void AutoBindIdentity()
     {
         if (string.IsNullOrEmpty(_identity.runtimeId))

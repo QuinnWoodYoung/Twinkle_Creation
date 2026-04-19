@@ -1,6 +1,11 @@
 using System.Collections.Generic;
 using UnityEngine;
 
+/// <summary>
+/// 输入桥接层。
+/// 角色逻辑不直接依赖“玩家输入”或“AI 输入”，而是统一从这里拿标准化后的控制信号，
+/// 再写入 CharCtrl.Param。
+/// </summary>
 public class CharSignalReader : MonoBehaviour
 {
     [SerializeField] private bool isPlayerControlled = true;
@@ -28,6 +33,9 @@ public class CharSignalReader : MonoBehaviour
             new AIInputSource());
     }
 
+    /// <summary>
+    /// 每帧把输入源结果写入 CharCtrl.Param，供移动/攻击/技能控制器消费。
+    /// </summary>
     private void Update()
     {
         Vector2 movementInput = currentInputSource.GetMovementInput();
@@ -49,6 +57,7 @@ public class CharSignalReader : MonoBehaviour
 
 public class PlayerInputSource : CharSignalReader.ICharCtrlSignal
 {
+    // 把持续按键转换成 down / held / up 三种更适合战斗逻辑的输入状态。
     private bool _wasAttackPressedLastFrame;
     private bool _wasDodgePressedLastFrame;
     private readonly List<bool> _skillWasPressedLastFrame = new List<bool>();
@@ -116,6 +125,7 @@ public class PlayerInputSource : CharSignalReader.ICharCtrlSignal
 
 public class AIInputSource : CharSignalReader.ICharCtrlSignal
 {
+    // 当前还是空实现，但接口已与玩家输入对齐，后续 AI 可直接复用整套角色控制器。
     public Vector2 GetMovementInput()
     {
         return Vector2.zero;

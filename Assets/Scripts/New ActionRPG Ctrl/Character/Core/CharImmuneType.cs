@@ -1,6 +1,10 @@
 using System;
 
 [Flags]
+/// <summary>
+/// 状态/战斗系统里使用的免疫类型位掩码。
+/// 用来表示“这个单位对哪类控制或伤害免疫”。
+/// </summary>
 public enum CharImmuneType
 {
     None = 0,

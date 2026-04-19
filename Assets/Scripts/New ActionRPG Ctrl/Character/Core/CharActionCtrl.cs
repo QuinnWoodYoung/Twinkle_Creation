@@ -1,6 +1,11 @@
 using System;
 using UnityEngine;
 
+/// <summary>
+/// 轻量级动作闸门。
+/// 它负责拦截攻击/施法/受击等动作请求，并统一管理动作期间的锁移动、锁转向、
+/// 等待转向、结束、打断，以及和状态系统/黑板之间的同步。
+/// </summary>
 public class CharActionCtrl : MonoBehaviour
 {
     // ActionStart fires when the action actually begins.
@@ -72,6 +77,9 @@ public class CharActionCtrl : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// 尝试启动一个动作请求。
+    /// </summary>
     public bool TryStart(CharActionReq req)
     {
         if (req == null)
@@ -118,6 +126,9 @@ public class CharActionCtrl : MonoBehaviour
         return true;
     }
 
+    /// <summary>
+    /// 正常结束当前动作。
+    /// </summary>
     public void EndCur()
     {
         if (_curReq == null)
@@ -149,6 +160,9 @@ public class CharActionCtrl : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// 主动打断当前动作。
+    /// </summary>
     public bool Interrupt(string reason)
     {
         if (_curReq == null)
@@ -199,6 +213,9 @@ public class CharActionCtrl : MonoBehaviour
         return _curReq != null && !_waitFace;
     }
 
+    /// <summary>
+    /// 根据状态快照判断该动作当前是否允许开始。
+    /// </summary>
     private bool CanStart(CharActionReq req)
     {
         CharStateSnap snap = null;
@@ -263,6 +280,9 @@ public class CharActionCtrl : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// 把动作状态同步给状态系统和黑板。
+    /// </summary>
     private void SyncState()
     {
         // During migration, action state is written to both the status bridge
@@ -309,6 +329,9 @@ public class CharActionCtrl : MonoBehaviour
         _charCtrl.EndSkillFacing();
     }
 
+    /// <summary>
+    /// 处理“先转向再正式开始动作”的等待阶段。
+    /// </summary>
     private void UpdateWaitFace()
     {
         if (_curReq == null)
@@ -337,6 +360,9 @@ public class CharActionCtrl : MonoBehaviour
         StartCur();
     }
 
+    /// <summary>
+    /// 把动作控制器内部状态写回黑板的 Action 切片。
+    /// </summary>
     private void SyncBlackBoardAction()
     {
         if (_blackBoard == null)

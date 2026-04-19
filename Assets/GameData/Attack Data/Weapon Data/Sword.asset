@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   attackRange: 0
   maxAttackRange: 0
-  attackSpeed: 1
+  rangedAttackSpeed: 1
   coolDown: 0
   attackTime: 0
   minDamage: 30
@@ -63,3 +63,6 @@ MonoBehaviour:
   attackHitVfxLifetime: 2
   attackCastVfxOffset: {x: 0, y: 0, z: 0}
   attackHitVfxOffset: {x: 0, y: 0, z: 0}
+  meleeSlashVfxEntries:
+  - typeId: Fan
+    prefab: {fileID: 1737387875744588960, guid: b65542e2c1b9d344d8d4e3573cf120ba, type: 3}

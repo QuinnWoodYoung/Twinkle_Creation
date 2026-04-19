@@ -2,8 +2,7 @@ using UnityEngine;
 
 public static class CharRuntimeResolver
 {
-    // This helper centralizes blackboard-first runtime state reads so gameplay
-    // code does not need to understand legacy component ownership.
+    // Runtime state is now blackboard-owned.
 
     public static float GetMoveSpeed(GameObject obj, float fallbackBaseSpeed = 0f)
     {
@@ -14,31 +13,23 @@ public static class CharRuntimeResolver
         }
 
         CharBlackBoard blackBoard = unit.GetComponent<CharBlackBoard>();
-        if (blackBoard != null)
+        if (blackBoard == null)
         {
-            float baseMoveSpeed = blackBoard.Motion.baseMoveSpeed > 0f
-                ? blackBoard.Motion.baseMoveSpeed
-                : fallbackBaseSpeed;
-
-            if (!blackBoard.Features.useStatus)
-            {
-                return Mathf.Max(0f, baseMoveSpeed);
-            }
-
-            CharStateSnap snap = blackBoard.Status.snapshot;
-            float finalMoveSpeed = baseMoveSpeed * Mathf.Max(0f, snap.moveSpdMul) + snap.moveSpdAdd;
-            return Mathf.Max(0f, finalMoveSpeed);
+            return Mathf.Max(0f, fallbackBaseSpeed);
         }
 
-        CharStatusCtrl statusCtrl = unit.GetComponent<CharStatusCtrl>();
-        if (statusCtrl != null)
+        float baseMoveSpeed = blackBoard.Motion.baseMoveSpeed > 0f
+            ? blackBoard.Motion.baseMoveSpeed
+            : fallbackBaseSpeed;
+
+        if (!blackBoard.Features.useStatus)
         {
-            CharStateSnap snap = statusCtrl.Snap;
-            float finalMoveSpeed = fallbackBaseSpeed * Mathf.Max(0f, snap.moveSpdMul) + snap.moveSpdAdd;
-            return Mathf.Max(0f, finalMoveSpeed);
+            return Mathf.Max(0f, baseMoveSpeed);
         }
 
-        return Mathf.Max(0f, fallbackBaseSpeed);
+        CharStateSnap snap = blackBoard.Status.snapshot;
+        float finalMoveSpeed = baseMoveSpeed * Mathf.Max(0f, snap.moveSpdMul) + snap.moveSpdAdd;
+        return Mathf.Max(0f, finalMoveSpeed);
     }
 
     public static float GetTurnSpeed(GameObject obj, float fallbackBaseTurnSpeed = 720f)
@@ -50,29 +41,22 @@ public static class CharRuntimeResolver
         }
 
         CharBlackBoard blackBoard = unit.GetComponent<CharBlackBoard>();
-        if (blackBoard != null)
+        if (blackBoard == null)
         {
-            float baseTurnSpeed = blackBoard.Motion.baseTurnSpeed > 0f
-                ? blackBoard.Motion.baseTurnSpeed
-                : fallbackBaseTurnSpeed;
-
-            if (!blackBoard.Features.useStatus)
-            {
-                return Mathf.Max(0f, baseTurnSpeed);
-            }
-
-            float finalTurnSpeed = baseTurnSpeed * Mathf.Max(0f, blackBoard.Status.snapshot.turnSpdMul);
-            return Mathf.Max(0f, finalTurnSpeed);
+            return Mathf.Max(0f, fallbackBaseTurnSpeed);
         }
 
-        CharStatusCtrl statusCtrl = unit.GetComponent<CharStatusCtrl>();
-        if (statusCtrl != null)
+        float baseTurnSpeed = blackBoard.Motion.baseTurnSpeed > 0f
+            ? blackBoard.Motion.baseTurnSpeed
+            : fallbackBaseTurnSpeed;
+
+        if (!blackBoard.Features.useStatus)
         {
-            float finalTurnSpeed = fallbackBaseTurnSpeed * Mathf.Max(0f, statusCtrl.Snap.turnSpdMul);
-            return Mathf.Max(0f, finalTurnSpeed);
+            return Mathf.Max(0f, baseTurnSpeed);
         }
 
-        return Mathf.Max(0f, fallbackBaseTurnSpeed);
+        float finalTurnSpeed = baseTurnSpeed * Mathf.Max(0f, blackBoard.Status.snapshot.turnSpdMul);
+        return Mathf.Max(0f, finalTurnSpeed);
     }
 
     public static float GetCastSpeed(GameObject obj)
@@ -112,18 +96,17 @@ public static class CharRuntimeResolver
         }
 
         CharBlackBoard blackBoard = unit.GetComponent<CharBlackBoard>();
-        if (blackBoard != null)
+        if (blackBoard == null)
         {
-            if (blackBoard.Features.useResources && blackBoard.Resources.hasHealth)
-            {
-                return blackBoard.Resources.hp <= 0f;
-            }
-
-            return blackBoard.Action.isDead;
+            return false;
         }
 
-        StateManager stateManager = unit.GetComponent<StateManager>();
-        return stateManager != null && stateManager.HitPoint <= 0f;
+        if (blackBoard.Features.useResources && blackBoard.Resources.hasHealth)
+        {
+            return blackBoard.Resources.hp <= 0f;
+        }
+
+        return blackBoard.Action.isDead;
     }
 
     public static bool CanMove(GameObject obj)
@@ -135,22 +118,15 @@ public static class CharRuntimeResolver
         }
 
         CharBlackBoard blackBoard = unit.GetComponent<CharBlackBoard>();
-        if (blackBoard != null)
+        if (blackBoard == null)
         {
-            bool canMove = blackBoard.Features.useStatus
-                ? blackBoard.Status.snapshot.canMove
-                : blackBoard.Motion.canMove;
-            return canMove && !blackBoard.Action.isControlLocked && !IsDead(unit);
+            return true;
         }
 
-        CharStatusCtrl statusCtrl = unit.GetComponent<CharStatusCtrl>();
-        if (statusCtrl != null)
-        {
-            return statusCtrl.Snap.canMove;
-        }
-
-        StateManager stateManager = unit.GetComponent<StateManager>();
-        return stateManager == null || stateManager.CanMove;
+        bool canMove = blackBoard.Features.useStatus
+            ? blackBoard.Status.snapshot.canMove
+            : blackBoard.Motion.canMove;
+        return canMove && !blackBoard.Action.isControlLocked && !IsDead(unit);
     }
 
     public static bool CanRotate(GameObject obj)
@@ -162,15 +138,14 @@ public static class CharRuntimeResolver
         }
 
         CharBlackBoard blackBoard = unit.GetComponent<CharBlackBoard>();
-        if (blackBoard != null)
+        if (blackBoard == null)
         {
-            return blackBoard.Features.useStatus
-                ? blackBoard.Status.snapshot.canRotate
-                : blackBoard.Motion.canRotate;
+            return true;
         }
 
-        CharStatusCtrl statusCtrl = unit.GetComponent<CharStatusCtrl>();
-        return statusCtrl == null || statusCtrl.Snap.canRotate;
+        return blackBoard.Features.useStatus
+            ? blackBoard.Status.snapshot.canRotate
+            : blackBoard.Motion.canRotate;
     }
 
     public static bool CanCast(GameObject obj)
@@ -182,22 +157,15 @@ public static class CharRuntimeResolver
         }
 
         CharBlackBoard blackBoard = unit.GetComponent<CharBlackBoard>();
-        if (blackBoard != null)
+        if (blackBoard == null)
         {
-            bool canCast = blackBoard.Features.useStatus
-                ? blackBoard.Status.snapshot.canCast
-                : true;
-            return canCast && !blackBoard.Action.isControlLocked && !IsDead(unit);
+            return true;
         }
 
-        CharStatusCtrl statusCtrl = unit.GetComponent<CharStatusCtrl>();
-        if (statusCtrl != null)
-        {
-            return statusCtrl.Snap.canCast;
-        }
-
-        StateManager stateManager = unit.GetComponent<StateManager>();
-        return stateManager == null || stateManager.CanCastSkills;
+        bool canCast = blackBoard.Features.useStatus
+            ? blackBoard.Status.snapshot.canCast
+            : true;
+        return canCast && !blackBoard.Action.isControlLocked && !IsDead(unit);
     }
 
     public static bool CanAttack(GameObject obj)
@@ -209,22 +177,15 @@ public static class CharRuntimeResolver
         }
 
         CharBlackBoard blackBoard = unit.GetComponent<CharBlackBoard>();
-        if (blackBoard != null)
+        if (blackBoard == null)
         {
-            bool canAttack = blackBoard.Features.useStatus
-                ? blackBoard.Status.snapshot.canAtk
-                : true;
-            return canAttack && !blackBoard.Action.isControlLocked && !IsDead(unit);
+            return true;
         }
 
-        CharStatusCtrl statusCtrl = unit.GetComponent<CharStatusCtrl>();
-        if (statusCtrl != null)
-        {
-            return statusCtrl.Snap.canAtk;
-        }
-
-        StateManager stateManager = unit.GetComponent<StateManager>();
-        return stateManager == null || !stateManager.IsStunned;
+        bool canAttack = blackBoard.Features.useStatus
+            ? blackBoard.Status.snapshot.canAtk
+            : true;
+        return canAttack && !blackBoard.Action.isControlLocked && !IsDead(unit);
     }
 
     public static bool IsDamageImmune(GameObject obj)
@@ -236,19 +197,18 @@ public static class CharRuntimeResolver
         }
 
         CharBlackBoard blackBoard = unit.GetComponent<CharBlackBoard>();
-        if (blackBoard != null)
+        if (blackBoard == null)
         {
-            bool statusImmune =
-                blackBoard.Features.useStatus &&
-                (blackBoard.Status.snapshot.tags & CharStateTag.Invul) != 0;
-            bool runtimeImmune =
-                blackBoard.Features.useCombat &&
-                blackBoard.Combat.damageImmuneCount > 0;
-            return statusImmune || runtimeImmune;
+            return false;
         }
 
-        StateManager stateManager = unit.GetComponent<StateManager>();
-        return stateManager != null && stateManager.IsInvulnerable;
+        bool statusImmune =
+            blackBoard.Features.useStatus &&
+            (blackBoard.Status.snapshot.tags & CharStateTag.Invul) != 0;
+        bool runtimeImmune =
+            blackBoard.Features.useCombat &&
+            blackBoard.Combat.damageImmuneCount > 0;
+        return statusImmune || runtimeImmune;
     }
 
     public static void PushControlLock(GameObject obj)
@@ -260,19 +220,14 @@ public static class CharRuntimeResolver
         }
 
         CharBlackBoard blackBoard = unit.GetComponent<CharBlackBoard>();
-        if (blackBoard != null)
+        if (blackBoard == null)
         {
-            blackBoard.Action.controlLockCount++;
-            blackBoard.Action.isControlLocked = blackBoard.Action.controlLockCount > 0;
-            blackBoard.MarkRuntimeChanged(CharBlackBoardChangeMask.Action);
             return;
         }
 
-        StateManager stateManager = unit.GetComponent<StateManager>();
-        if (stateManager != null)
-        {
-            stateManager.PushControlLock();
-        }
+        blackBoard.Action.controlLockCount++;
+        blackBoard.Action.isControlLocked = blackBoard.Action.controlLockCount > 0;
+        blackBoard.MarkRuntimeChanged(CharBlackBoardChangeMask.Action);
     }
 
     public static void PopControlLock(GameObject obj)
@@ -284,19 +239,14 @@ public static class CharRuntimeResolver
         }
 
         CharBlackBoard blackBoard = unit.GetComponent<CharBlackBoard>();
-        if (blackBoard != null)
+        if (blackBoard == null)
         {
-            blackBoard.Action.controlLockCount = Mathf.Max(0, blackBoard.Action.controlLockCount - 1);
-            blackBoard.Action.isControlLocked = blackBoard.Action.controlLockCount > 0;
-            blackBoard.MarkRuntimeChanged(CharBlackBoardChangeMask.Action);
             return;
         }
 
-        StateManager stateManager = unit.GetComponent<StateManager>();
-        if (stateManager != null)
-        {
-            stateManager.PopControlLock();
-        }
+        blackBoard.Action.controlLockCount = Mathf.Max(0, blackBoard.Action.controlLockCount - 1);
+        blackBoard.Action.isControlLocked = blackBoard.Action.controlLockCount > 0;
+        blackBoard.MarkRuntimeChanged(CharBlackBoardChangeMask.Action);
     }
 
     public static void PushDamageImmune(GameObject obj)
@@ -308,18 +258,13 @@ public static class CharRuntimeResolver
         }
 
         CharBlackBoard blackBoard = unit.GetComponent<CharBlackBoard>();
-        if (blackBoard != null && blackBoard.Features.useCombat)
+        if (blackBoard == null || !blackBoard.Features.useCombat)
         {
-            blackBoard.Combat.damageImmuneCount++;
-            blackBoard.MarkRuntimeChanged(CharBlackBoardChangeMask.Combat);
             return;
         }
 
-        StateManager stateManager = unit.GetComponent<StateManager>();
-        if (stateManager != null)
-        {
-            stateManager.PushDamageImmune();
-        }
+        blackBoard.Combat.damageImmuneCount++;
+        blackBoard.MarkRuntimeChanged(CharBlackBoardChangeMask.Combat);
     }
 
     public static void PopDamageImmune(GameObject obj)
@@ -331,17 +276,12 @@ public static class CharRuntimeResolver
         }
 
         CharBlackBoard blackBoard = unit.GetComponent<CharBlackBoard>();
-        if (blackBoard != null && blackBoard.Features.useCombat)
+        if (blackBoard == null || !blackBoard.Features.useCombat)
         {
-            blackBoard.Combat.damageImmuneCount = Mathf.Max(0, blackBoard.Combat.damageImmuneCount - 1);
-            blackBoard.MarkRuntimeChanged(CharBlackBoardChangeMask.Combat);
             return;
         }
 
-        StateManager stateManager = unit.GetComponent<StateManager>();
-        if (stateManager != null)
-        {
-            stateManager.PopDamageImmune();
-        }
+        blackBoard.Combat.damageImmuneCount = Mathf.Max(0, blackBoard.Combat.damageImmuneCount - 1);
+        blackBoard.MarkRuntimeChanged(CharBlackBoardChangeMask.Combat);
     }
 }

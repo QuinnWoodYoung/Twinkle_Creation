@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 4b55afdd0d66b004f842369410e0d501, type: 3}
   m_Name: DP Data
   m_EditorClassIdentifier: 
-  HitPoint: 10
-  MaxHitPoint: 10
+  HitPoint: 500
+  MaxHitPoint: 500
   Energy: 100
   MaxEnergy: 100

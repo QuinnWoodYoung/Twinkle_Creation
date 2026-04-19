@@ -31,19 +31,19 @@ public static class CharEquipmentResolver
             }
         }
 
-        StateManager stateManager = owner.GetComponent<StateManager>();
-        if (stateManager != null)
+        CharWeaponMounts weaponMounts = CharWeaponMounts.Resolve(owner);
+        if (weaponMounts != null)
         {
-            Transform slotRoot = GetActiveChild(stateManager.rightHandSlot);
+            Transform slotRoot = GetActiveChild(weaponMounts.RightHandSlot);
             if (slotRoot != null) return slotRoot;
 
-            slotRoot = GetActiveChild(stateManager.leftHandSlot);
+            slotRoot = GetActiveChild(weaponMounts.LeftHandSlot);
             if (slotRoot != null) return slotRoot;
 
-            slotRoot = GetAnyChild(stateManager.rightHandSlot);
+            slotRoot = GetAnyChild(weaponMounts.RightHandSlot);
             if (slotRoot != null) return slotRoot;
 
-            slotRoot = GetAnyChild(stateManager.leftHandSlot);
+            slotRoot = GetAnyChild(weaponMounts.LeftHandSlot);
             if (slotRoot != null) return slotRoot;
         }
 

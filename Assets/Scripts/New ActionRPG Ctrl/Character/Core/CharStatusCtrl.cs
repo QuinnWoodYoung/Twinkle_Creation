@@ -2,6 +2,11 @@ using System;
 using System.Collections.Generic;
 using UnityEngine;
 
+/// <summary>
+/// 状态系统的权威入口。
+/// 它维护运行时状态列表，并把它们折叠成一份 CharStateSnap，
+/// 让移动、攻击、施法、动画等系统都从同一份快照读取限制与加成。
+/// </summary>
 public class CharStatusCtrl : MonoBehaviour
 {
     [Serializable]
@@ -74,6 +79,10 @@ public class CharStatusCtrl : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// 尝试施加一个状态。
+    /// 会依次检查免疫、互斥组和叠层规则，最后返回新增/刷新/替换/拒绝结果。
+    /// </summary>
     public CharStatusApplyRes TryApply(CharStatusApplyReq req)
     {
         if (req.def == null)
@@ -203,6 +212,9 @@ public class CharStatusCtrl : MonoBehaviour
         return (_snap.immunes & immune) == immune;
     }
 
+    /// <summary>
+    /// 接收动作系统同步过来的动作态，并把它并入快照。
+    /// </summary>
     public void SetActionState(CharActionState actionState)
     {
         if (_snap.actionState == actionState)
@@ -323,6 +335,10 @@ public class CharStatusCtrl : MonoBehaviour
         return null;
     }
 
+    /// <summary>
+    /// 重建状态快照。
+    /// 这是状态系统把“状态列表”收束成“可直接读取结果”的关键步骤。
+    /// </summary>
     private void RebuildSnap()
     {
         CharActionState curActionState = _snap.actionState;
@@ -376,6 +392,9 @@ public class CharStatusCtrl : MonoBehaviour
         SnapUpd?.Invoke(_snap);
     }
 
+    /// <summary>
+    /// 把动作态映射成状态标签，统一给动画/表现层读取。
+    /// </summary>
     private void AppendActionTags()
     {
         switch (_snap.actionState)
@@ -419,6 +438,9 @@ public class CharStatusCtrl : MonoBehaviour
         return CharStateTag.None;
     }
 
+    /// <summary>
+    /// 让状态列表和状态快照直接挂在黑板上，形成共享读口。
+    /// </summary>
     private void BindBlackBoard()
     {
         // First migration step: keep status runtime data inside the blackboard
@@ -443,6 +465,9 @@ public class CharStatusCtrl : MonoBehaviour
         _snap = _blackBoard.Status.snapshot;
     }
 
+    /// <summary>
+    /// 将快照中的核心结果投影到黑板，供 Resolver、动画、UI 快速消费。
+    /// </summary>
     private void SyncBlackBoardSnapshot()
     {
         if (_blackBoard == null)

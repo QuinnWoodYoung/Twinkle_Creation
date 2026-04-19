@@ -1,10 +1,17 @@
 using UnityEngine;
 
+/// <summary>
+/// 状态系统对外的轻量入口。
+/// 目前它主要承担“兼容旧接口”的职责，把旧的 EStatusType 施加请求转发给 CharStatusCtrl。
+/// </summary>
 public static class CharStatusResolver
 {
-    // Status access prefers CharStatusCtrl so effects stay independent from the
-    // legacy state component. StateManager remains as a compatibility fallback.
+    // Status application is now handled by CharStatusCtrl on blackboard units.
 
+    /// <summary>
+    /// 兼容旧状态接口的施加入口。
+    /// 最终仍会归到目标角色身上的 CharStatusCtrl 去处理。
+    /// </summary>
     public static bool ApplyLegacyStatus(
         GameObject target,
         EStatusType status,
@@ -27,18 +34,7 @@ public static class CharStatusResolver
         }
 
         CharStatusCtrl statusCtrl = unit.GetComponent<CharStatusCtrl>();
-        if (statusCtrl != null)
-        {
-            return statusCtrl.ApplyStatus(status, duration, applier, source, stackAdd, power);
-        }
-
-        StateManager stateManager = unit.GetComponent<StateManager>();
-        if (stateManager != null)
-        {
-            stateManager.ApplyStatus(status, duration);
-            return true;
-        }
-
-        return false;
+        return statusCtrl != null &&
+            statusCtrl.ApplyStatus(status, duration, applier, source, stackAdd, power);
     }
 }

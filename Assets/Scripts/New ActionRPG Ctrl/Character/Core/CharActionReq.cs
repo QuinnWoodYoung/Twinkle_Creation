@@ -31,6 +31,11 @@ public enum CharActionState
 }
 
 [System.Serializable]
+/// <summary>
+/// 动作请求。
+/// CharActionCtrl 通过这份描述来决定：动作是什么、持续多久、是否锁移动/转向、
+/// 是否要先转身再真正开始动作。
+/// </summary>
 public class CharActionReq
 {
     // High-level action type used by the runtime gate.

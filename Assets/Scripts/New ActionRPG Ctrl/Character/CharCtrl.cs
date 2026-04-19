@@ -2,6 +2,11 @@
 using UnityEngine;
 
 // 鐢ㄤ簬鎺у埗瑙掕壊鐘舵€佸拰鍔ㄧ敾鎾斁鐨勬牳蹇冭剼鏈?
+/// <summary>
+/// 角色本体控制器。
+/// 直接负责位移、重力、朝向、闪避和死亡下的控制开关，
+/// 并把这些运行结果同步给动画系统与黑板。
+/// </summary>
 public class CharCtrl : MonoBehaviour
 {
     // 鍙傛暟瀹瑰櫒锛堢帺瀹惰緭鍏ョ殑淇″彿宸蹭紶鍏ュ叾涓級
@@ -120,6 +125,10 @@ public class CharCtrl : MonoBehaviour
         _characterController.enabled = shouldEnableController;
     }
 
+    /// <summary>
+    /// 角色移动主流程。
+    /// 顺序上依次处理：输入转位移、重力、状态限制、角色位移、强制转向、技能转向、普通朝向。
+    /// </summary>
     private void ApplyMove()
     {
         moveDir = new Vector3(Param.Locomotion.x, 0, Param.Locomotion.y);
@@ -208,6 +217,9 @@ public class CharCtrl : MonoBehaviour
         SyncVelocity(appliedMove);
     }
 
+    /// <summary>
+    /// 临时强制角色朝向某个方向，常给攻击/技能使用。
+    /// </summary>
     public void ForceFaceDirection(Vector3 direction, float duration, bool keepUntilAligned = false)
     {
         ApplyForcedFaceRequest(direction, duration, keepUntilAligned, -1f);
@@ -245,6 +257,10 @@ public class CharCtrl : MonoBehaviour
         _movementLocked = locked;
     }
 
+    /// <summary>
+    /// 进入技能转向阶段。
+    /// CharActionCtrl 在 waitFace 流程里会调用它。
+    /// </summary>
     public void BeginSkillFacing(Vector3 direction)
     {
         direction.y = 0f;
@@ -275,6 +291,9 @@ public class CharCtrl : MonoBehaviour
         return Vector3.Angle(transform.forward, direction.normalized) <= toleranceDegrees;
     }
 
+    /// <summary>
+    /// 朝指定方向平滑转向，并返回当前是否已经转到容差范围内。
+    /// </summary>
     public bool RotateTowardsDirection(Vector3 direction, float toleranceDegrees = 0f, float turnSpeedOverride = -1f)
     {
         direction.y = 0f;
@@ -316,6 +335,9 @@ public class CharCtrl : MonoBehaviour
         _dodgeTimer = Mathf.Max(_dodgeTimer, _dodgeDuration);
     }
     // ------------------------- 娴嬭瘯鐢ㄥ姩鐢绘帶鍒?-------------------------
+    /// <summary>
+    /// 把移动结果写给身体动画控制器。
+    /// </summary>
     private void AnimCtrl()
     {
         if (_animCtrl == null)
@@ -358,6 +380,9 @@ public class CharCtrl : MonoBehaviour
         return _animCtrl != null && _animCtrl.Has8DirLocomotion;
     }
 
+    /// <summary>
+    /// 将当前帧的移动、输入和锁定目标信息同步到黑板。
+    /// </summary>
     private void SyncBlackBoardMotion()
     {
         if (_blackBoard == null || _charParam == null)

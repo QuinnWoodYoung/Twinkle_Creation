@@ -482,6 +482,45 @@ public class StateManager : MonoBehaviour
         EquipWeapon(weapon);
     }
 
+    // Blackboard is the current HP authority. StateManager keeps legacy side
+    // effects such as HP events and hit-react without owning the value itself.
+    public void NotifyBlackboardDamageApplied(float damageAmount)
+    {
+        if (!HasHealthData())
+        {
+            return;
+        }
+
+        float finalDamage = Mathf.Max(damageAmount, 0f);
+        if (finalDamage <= 0f)
+        {
+            return;
+        }
+
+        CharStatusCtrl statusCtrl = GetCharStatusCtrl();
+        if (_breakOnDmg && statusCtrl != null)
+        {
+            statusCtrl.NotifyBreakByDmg();
+        }
+
+        UpdateHP?.Invoke(HitPoint, MaxHitPoint);
+
+        if (HitPoint > 0f)
+        {
+            TryStartHitReact();
+        }
+    }
+
+    public void NotifyBlackboardHealthChanged()
+    {
+        if (!HasHealthData())
+        {
+            return;
+        }
+
+        UpdateHP?.Invoke(HitPoint, MaxHitPoint);
+    }
+
     public void ApplyHealth(int amount)
     {
         if (!HasHealthData())
@@ -695,12 +734,8 @@ public class StateManager : MonoBehaviour
 
         if (_blackBoard.Features.useCombat && attackData != null)
         {
-            _blackBoard.Combat.attackPower = attackData.minDamage;
-            _blackBoard.Combat.criticalAttackPower = attackData.maxDamage;
-            _blackBoard.Combat.rangedAttackSpeed = attackData.rangedAttackSpeed;
-            _blackBoard.Combat.attackRange = attackData.attackRange;
-            _blackBoard.Combat.maxAttackRange = attackData.maxAttackRange;
-            _blackBoard.Combat.attackCooldown = attackData.coolDown;
+            AttackData_SO resolvedAttackData = CharCombatRuntimeUtility.AssignAttackData(_blackBoard, attackData, false);
+            CharCombatRuntimeUtility.ApplyAttackStats(_blackBoard.Combat, resolvedAttackData);
             _blackBoard.Combat.isCritical = isCritical;
         }
 
@@ -793,12 +828,8 @@ public class StateManager : MonoBehaviour
 
         if (_blackBoard.Features.useCombat && attackData != null)
         {
-            _blackBoard.Combat.attackPower = attackData.minDamage;
-            _blackBoard.Combat.criticalAttackPower = attackData.maxDamage;
-            _blackBoard.Combat.rangedAttackSpeed = attackData.rangedAttackSpeed;
-            _blackBoard.Combat.attackRange = attackData.attackRange;
-            _blackBoard.Combat.maxAttackRange = attackData.maxAttackRange;
-            _blackBoard.Combat.attackCooldown = attackData.coolDown;
+            AttackData_SO resolvedAttackData = CharCombatRuntimeUtility.AssignAttackData(_blackBoard, attackData, false);
+            CharCombatRuntimeUtility.ApplyAttackStats(_blackBoard.Combat, resolvedAttackData);
             _blackBoard.Combat.isCritical = isCritical;
         }
     }

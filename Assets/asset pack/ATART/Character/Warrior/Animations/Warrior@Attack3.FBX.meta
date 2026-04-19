@@ -69,7 +69,14 @@ ModelImporter:
       bodyMask: 01000000010000000100000001000000010000000100000001000000010000000100000001000000010000000100000001000000
       curves: []
       events:
-      - time: 0.30229032
+      - time: 0.28664172
+        functionName: ShowMeleeSlashStage
+        data: 
+        objectReferenceParameter: {instanceID: 0}
+        floatParameter: 0
+        intParameter: 3
+        messageOptions: 0
+      - time: 0.3002242
         functionName: WeaponEnable
         data: 
         objectReferenceParameter: {instanceID: 0}
@@ -78,6 +85,13 @@ ModelImporter:
         messageOptions: 0
       - time: 0.46032557
         functionName: WeaponDisable
+        data: 
+        objectReferenceParameter: {instanceID: 0}
+        floatParameter: 0
+        intParameter: 0
+        messageOptions: 0
+      - time: 0.4691689
+        functionName: HideMeleeSlash
         data: 
         objectReferenceParameter: {instanceID: 0}
         floatParameter: 0

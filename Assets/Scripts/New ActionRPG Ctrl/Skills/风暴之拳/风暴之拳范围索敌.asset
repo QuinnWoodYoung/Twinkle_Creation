@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 2096974661fef6b4a86c4a833e7dd9a1, type: 3}
   m_Name: "\u98CE\u66B4\u4E4B\u62F3\u8303\u56F4\u7D22\u654C"
   m_EditorClassIdentifier: 
-  radius: 5
+  radius: 1
   searchOrigin: 0
   targetTeamRule: 1
   includeCaster: 0

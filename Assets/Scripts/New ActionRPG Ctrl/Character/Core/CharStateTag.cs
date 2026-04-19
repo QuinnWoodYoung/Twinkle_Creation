@@ -1,6 +1,10 @@
 using System;
 
 [Flags]
+/// <summary>
+/// 状态快照里的“状态标签位”。
+/// 它表达角色当前处于什么状态，而不是具体禁止了哪些行为。
+/// </summary>
 public enum CharStateTag
 {
     None = 0,
