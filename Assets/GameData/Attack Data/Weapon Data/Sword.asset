@@ -26,6 +26,7 @@ MonoBehaviour:
   canMoveWhileAttack: 1
   useUpperBodyMoveAttackPresentation: 1
   useDirectionalAimInput: 1
+  useAttackFacingInput: 0
   keepDirectionalAimFacingWhileMoving: 1
   useDirectionalStrafeLocomotion: 1
   useLogicHitResolution: 1
@@ -55,6 +56,10 @@ MonoBehaviour:
   minChargeTime: 0.15
   maxChargeTime: 1.2
   chargeReleaseAnimKey: Attack
+  releaseChargeAttackOnDodge: 1
+  dodgeAttackWindow: 0.18
+  dodgeAttackDamageMultiplier: 1
+  dodgeAttackDamageBonus: 0
   attackCastVfx: {fileID: 0}
   attackHitVfx: {fileID: 1835174905073365006, guid: adfd6c86cf180e64aaaa1bece2395926, type: 3}
   attackVfxPointName: BasicAttack VFX

@@ -7434,7 +7434,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: bdff56169b2736a4c9eedde7f79a5a46, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  useGamepadInput: 1
+  useGamepadInput: 0
   playerInputMovementValue: {x: 0, y: 0}
   playerInputAimValue: {x: 0, y: 0}
   playerInputAttackValue: 0
@@ -46077,7 +46077,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 83c991da92bbdda44aaf8edf65f94e23, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  _weaponItem: {fileID: 11400000, guid: 8eb59863b480f2142814c830cf145522, type: 2}
+  _weaponItem: {fileID: 11400000, guid: b524b487311b5f14289238484628df7f, type: 2}
   _equipOnStart: 1
   _equipDelay: 0
 --- !u!114 &2869916834597007330

@@ -877,6 +877,11 @@ public class CharWeaponCtrl : MonoBehaviour
             case BasicAttackMode.RangedChargeRelease:
                 return profile != null ? profile.preferLockedTarget : _preferLockedTarget;
             default:
+                if (profile != null && (profile.useDirectionalAimInput || profile.useAttackFacingInput))
+                {
+                    return profile.preferLockedTarget;
+                }
+
                 return false;
         }
     }
@@ -972,12 +977,19 @@ public class CharWeaponCtrl : MonoBehaviour
             || _meleeComboAimGraceRemain > 0f
             || HasActiveSelfAttackAction();
 
+        AttackData_SO profile = ResolveAttackProfile();
+        bool useDirectionalAimInput = UsesDirectionalAimInput(profile);
+        bool useAttackFacingInput = UsesAttackFacingInput(profile);
+        bool useLockedAim = (useDirectionalAimInput || useAttackFacingInput)
+            && _charCtrl != null
+            && _charCtrl.LockedTarget != null;
+
         Vector3 aimDir = CharBasicAttackTargeting.ResolveAimDirection(
             gameObject,
             _charCtrl,
-            false,
-            UsesDirectionalAimInput(ResolveAttackProfile()),
-            UsesAttackFacingInput(ResolveAttackProfile()));
+            useLockedAim,
+            useDirectionalAimInput,
+            useAttackFacingInput);
         if (aimDir.sqrMagnitude > 0.001f)
             _meleeComboAimDirection = aimDir.normalized;
 

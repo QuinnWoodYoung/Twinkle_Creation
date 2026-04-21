@@ -25,8 +25,8 @@ MonoBehaviour:
   comboResetTime: 0
   canMoveWhileAttack: 1
   useUpperBodyMoveAttackPresentation: 0
-  useDirectionalAimInput: 1
-  useAttackFacingInput: 0
+  useDirectionalAimInput: 0
+  useAttackFacingInput: 1
   keepDirectionalAimFacingWhileMoving: 1
   useDirectionalStrafeLocomotion: 1
   useLogicHitResolution: 1

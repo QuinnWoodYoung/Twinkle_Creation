@@ -85,10 +85,10 @@ public class AttackData_SO : ScriptableObject
     public float projectileTargetHeightOffset = 0.1f;
 
     [Header("Projectile")]
-    [Tooltip("远程武器是否优先使用锁定目标。通常 Homing 开启，Straight 关闭。")]
     public GameObject projectilePrefab;
     public float projectileSpeed = 10f;
     public float homingTurnSpeed = 18f;
+    [Tooltip("是否优先使用锁定目标。通常 Homing 开启；双摇杆/方向输入近战也可开启。")]
     public bool preferLockedTarget = true;
     [Tooltip("远程普攻没有锁定目标时，是否允许方向附近的软索敌。")]
     public bool enableSoftLock = true;
