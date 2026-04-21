@@ -831,9 +831,11 @@ public class CharWeaponCtrl : MonoBehaviour
         BasicAttackTargetingMode targetingMode = ResolveTargetingMode(attackMode, profile);
         float assistAngle = isRanged ? _rangedAssistAngle : _meleeAssistAngle;
         bool preferLocked = ResolvePreferLockedTarget(attackMode, profile);
-        bool useLockedAim = attackMode != BasicAttackMode.RangedStraight;
         bool useDirectionalAimInput = UsesDirectionalAimInput(profile);
         bool useAttackFacingInput = UsesAttackFacingInput(profile);
+        bool useLockedAim = attackMode != BasicAttackMode.RangedStraight
+            || ((useDirectionalAimInput || useAttackFacingInput)
+                && _charCtrl.LockedTarget != null);
 
         return CharBasicAttackTargeting.Resolve(
             gameObject,
@@ -872,6 +874,11 @@ public class CharWeaponCtrl : MonoBehaviour
         switch (attackMode)
         {
             case BasicAttackMode.RangedStraight:
+                if (profile != null && (profile.useDirectionalAimInput || profile.useAttackFacingInput))
+                {
+                    return profile.preferLockedTarget;
+                }
+
                 return false;
             case BasicAttackMode.RangedHoming:
             case BasicAttackMode.RangedChargeRelease:
