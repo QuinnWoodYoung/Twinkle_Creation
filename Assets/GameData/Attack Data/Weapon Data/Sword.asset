@@ -25,6 +25,9 @@ MonoBehaviour:
   comboResetTime: 0.6
   canMoveWhileAttack: 1
   useUpperBodyMoveAttackPresentation: 1
+  useDirectionalAimInput: 1
+  keepDirectionalAimFacingWhileMoving: 1
+  useDirectionalStrafeLocomotion: 1
   useLogicHitResolution: 1
   logicHitDelay: 0.08
   allowLegacyCollisionDamage: 0

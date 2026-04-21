@@ -35,7 +35,9 @@ public static class CharBasicAttackTargeting
         float range,
         float assistAngle,
         bool preferLockedTarget,
-        bool useLockedAim = true)
+        bool useLockedAim = true,
+        bool useDirectionalAimInput = false,
+        bool useAttackFacingInput = false)
     {
         BasicAttackTargetInfo info = new BasicAttackTargetInfo();
         GameObject attackerUnit = CharRelationResolver.NormalizeUnit(attacker);
@@ -45,7 +47,12 @@ public static class CharBasicAttackTargeting
         }
 
         Vector3 origin = attackerUnit.transform.position;
-        Vector3 aimDirection = ResolveAimDirection(attackerUnit, charCtrl, useLockedAim);
+        Vector3 aimDirection = ResolveAimDirection(
+            attackerUnit,
+            charCtrl,
+            useLockedAim,
+            useDirectionalAimInput,
+            useAttackFacingInput);
         Transform lockedTarget = charCtrl != null ? charCtrl.LockedTarget : null;
 
         if (preferLockedTarget && TryGetLockedEnemy(attackerUnit, lockedTarget, out GameObject lockedUnit))
@@ -82,15 +89,18 @@ public static class CharBasicAttackTargeting
     /// 解析玩家当前想打向哪里。
     /// 优先锁定目标，其次读 AimInput，最后退回角色 forward。
     /// </summary>
-    public static Vector3 ResolveAimDirection(GameObject attacker, CharCtrl charCtrl, bool useLockedAim = true)
+    public static Vector3 ResolveAimDirection(
+        GameObject attacker,
+        CharCtrl charCtrl,
+        bool useLockedAim = true,
+        bool useDirectionalAimInput = false,
+        bool useAttackFacingInput = false)
     {
         GameObject attackerUnit = CharRelationResolver.NormalizeUnit(attacker);
         if (attackerUnit == null)
         {
             return Vector3.forward;
         }
-
-        PlayerInputManager inputManager = PlayerInputManager.instance;
 
         if (useLockedAim && charCtrl != null && charCtrl.LockedTarget != null)
         {
@@ -102,11 +112,18 @@ public static class CharBasicAttackTargeting
             }
         }
 
-        if (inputManager != null && inputManager.IsUsingGamepadInput)
+        if (useAttackFacingInput &&
+            charCtrl != null &&
+            charCtrl.TryGetAttackFacingDirection(out Vector3 attackFacingDirection))
         {
-            Vector3 forward = attackerUnit.transform.forward;
-            forward.y = 0f;
-            return forward.sqrMagnitude > 0.001f ? forward.normalized : Vector3.forward;
+            return attackFacingDirection;
+        }
+
+        if (useDirectionalAimInput &&
+            charCtrl != null &&
+            charCtrl.TryGetDirectionalAimDirection(out Vector3 directionalAim))
+        {
+            return directionalAim;
         }
 
         if (charCtrl != null && charCtrl.Param != null)

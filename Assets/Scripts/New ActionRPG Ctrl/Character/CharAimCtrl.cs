@@ -27,7 +27,12 @@ public class CharAimCtrl : MonoBehaviour
     public float gamepadLockSwitchRange = 18f;
 
     public Transform lockedTarget;
-    private bool _gamepadLockSwitchReady = true;
+    private bool _directionalLockSwitchReady = true;
+    private bool _isLockModeActive;
+    private bool _hasDirectionalAimDirection;
+    private Vector3 _directionalAimDirection = Vector3.forward;
+
+    public bool IsLockModeActive => _isLockModeActive;
 
     protected void Awake()
     {
@@ -55,7 +60,15 @@ public class CharAimCtrl : MonoBehaviour
             _skillPreviewCtrl = GetComponent<SkillPreviewController>();
         }
 
-        if (_charCtrl != null && _charCtrl.Param.isLock)
+        UpdateDirectionalAimDirection();
+        UpdateLockModeState();
+
+        if (_charCtrl != null && _charCtrl.Param != null)
+        {
+            _charCtrl.Param.isLock = _isLockModeActive;
+        }
+
+        if (_isLockModeActive)
         {
             HandleLockOn();
         }
@@ -70,6 +83,62 @@ public class CharAimCtrl : MonoBehaviour
         }
     }
 
+    public bool TryGetDirectionalAimDirection(out Vector3 direction)
+    {
+        direction = Vector3.zero;
+
+        if (TryResolveCurrentDirectionalAimDirection(out Vector3 currentDirection))
+        {
+            direction = currentDirection;
+            return true;
+        }
+
+        if (!_hasDirectionalAimDirection)
+        {
+            return false;
+        }
+
+        direction = _directionalAimDirection;
+        return direction.sqrMagnitude > 0.001f;
+    }
+
+    private void UpdateDirectionalAimDirection()
+    {
+        if (TryResolveCurrentDirectionalAimDirection(out Vector3 direction))
+        {
+            _directionalAimDirection = direction;
+            _hasDirectionalAimDirection = true;
+        }
+        else if (!_hasDirectionalAimDirection)
+        {
+            Vector3 fallbackForward = transform.forward;
+            fallbackForward.y = 0f;
+            if (fallbackForward.sqrMagnitude > 0.001f)
+            {
+                _directionalAimDirection = fallbackForward.normalized;
+            }
+        }
+    }
+
+    private void UpdateLockModeState()
+    {
+        if (_charCtrl == null || _charCtrl.Param == null)
+        {
+            _isLockModeActive = false;
+            lockedTarget = null;
+            return;
+        }
+
+        if (_charCtrl.Param.LockState.isDown)
+        {
+            _isLockModeActive = !_isLockModeActive;
+            if (!_isLockModeActive)
+            {
+                lockedTarget = null;
+            }
+        }
+    }
+
     private void HandleLockOn()
     {
         if (_mainCamera == null)
@@ -80,7 +149,7 @@ public class CharAimCtrl : MonoBehaviour
 
         if (lockedTarget != null && IsValidLockTarget(lockedTarget))
         {
-            if (TryHandleGamepadLockSwitch())
+            if (TryHandleDirectionalLockSwitch())
             {
                 return;
             }
@@ -88,12 +157,22 @@ public class CharAimCtrl : MonoBehaviour
             return;
         }
 
-        if (TryHandleGamepadLockSwitch())
+        if (TryHandleDirectionalLockSwitch())
         {
             return;
         }
 
-        lockedTarget = FindBestCursorLockTarget();
+        lockedTarget = FindBestLockTarget();
+    }
+
+    private Transform FindBestLockTarget()
+    {
+        if (TryGetDirectionalAimDirection(out Vector3 directionalAim))
+        {
+            return FindBestDirectionalLockTarget(directionalAim, false);
+        }
+
+        return FindBestCursorLockTarget();
     }
 
     private Transform FindBestCursorLockTarget()
@@ -127,18 +206,9 @@ public class CharAimCtrl : MonoBehaviour
                 continue;
             }
 
-            Vector2 aimCursor;
-            PlayerInputManager inputManager = PlayerInputManager.instance;
-            if (inputManager != null && inputManager.IsUsingGamepadInput)
-            {
-                aimCursor = new Vector2(Screen.width * 0.5f, Screen.height * 0.5f);
-            }
-            else
-            {
-                aimCursor = _charCtrl != null && _charCtrl.Param != null
-                    ? _charCtrl.Param.AimTarget
-                    : (Vector2)Input.mousePosition;
-            }
+            Vector2 aimCursor = _charCtrl != null && _charCtrl.Param != null
+                ? _charCtrl.Param.AimTarget
+                : (Vector2)Input.mousePosition;
             float distance = Vector2.Distance(screenPos, aimCursor);
             if (distance >= minDistance || distance > maxLockOnRadius)
             {
@@ -152,12 +222,11 @@ public class CharAimCtrl : MonoBehaviour
         return bestTarget;
     }
 
-    private bool TryHandleGamepadLockSwitch()
+    private bool TryHandleDirectionalLockSwitch()
     {
-        PlayerInputManager inputManager = PlayerInputManager.instance;
-        if (inputManager == null || !inputManager.IsUsingGamepadInput)
+        if (!TryGetDirectionalAimInput(out Vector2 directionalInput))
         {
-            _gamepadLockSwitchReady = true;
+            _directionalLockSwitchReady = true;
             return false;
         }
 
@@ -166,24 +235,28 @@ public class CharAimCtrl : MonoBehaviour
             return lockedTarget != null;
         }
 
-        Vector2 stick = inputManager.GamepadAimStick;
-        float magnitude = stick.magnitude;
+        float magnitude = directionalInput.magnitude;
         float switchThreshold = Mathf.Max(0f, gamepadLockSwitchThreshold);
         float resetThreshold = Mathf.Max(0f, gamepadLockSwitchResetThreshold);
 
         if (magnitude <= resetThreshold)
         {
-            _gamepadLockSwitchReady = true;
+            _directionalLockSwitchReady = true;
             return false;
         }
 
-        if (!_gamepadLockSwitchReady || magnitude < switchThreshold)
+        if (!_directionalLockSwitchReady || magnitude < switchThreshold)
         {
             return lockedTarget != null;
         }
 
-        _gamepadLockSwitchReady = false;
-        Transform nextTarget = ResolveGamepadLockTarget(stick);
+        if (!TryResolveWorldDirectionFromInput(directionalInput, out Vector3 desiredDirection))
+        {
+            return lockedTarget != null;
+        }
+
+        _directionalLockSwitchReady = false;
+        Transform nextTarget = FindBestDirectionalLockTarget(desiredDirection, true);
         if (nextTarget != null)
         {
             lockedTarget = nextTarget;
@@ -193,23 +266,17 @@ public class CharAimCtrl : MonoBehaviour
         return lockedTarget != null;
     }
 
-    private Transform ResolveGamepadLockTarget(Vector2 stickInput)
+    private Transform FindBestDirectionalLockTarget(Vector3 desiredDirection, bool fallbackToCurrent)
     {
-        if (_mainCamera == null)
+        if (desiredDirection.sqrMagnitude <= 0.001f)
         {
-            return lockedTarget;
+            return fallbackToCurrent ? lockedTarget : null;
         }
 
         GameObject selfUnit = _blackBoard != null ? _blackBoard.gameObject : gameObject;
-        Vector3 desiredDirection = ResolveWorldDirectionFromStick(stickInput);
-        if (desiredDirection.sqrMagnitude <= 0.001f)
-        {
-            return lockedTarget;
-        }
-
         float bestScore = float.MaxValue;
         Transform bestTarget = null;
-        float maxRange = Mathf.Max(0.1f, gamepadLockSwitchRange);
+        float maxRange = ResolveDirectionalLockRange(selfUnit);
 
         foreach (CharBlackBoard board in CharBlackBoard.ActiveBoards)
         {
@@ -249,7 +316,7 @@ public class CharAimCtrl : MonoBehaviour
             bestTarget = candidateUnit.transform;
         }
 
-        return bestTarget != null ? bestTarget : lockedTarget;
+        return bestTarget != null ? bestTarget : (fallbackToCurrent ? lockedTarget : null);
     }
 
     private bool IsValidLockTarget(Transform target)
@@ -263,11 +330,43 @@ public class CharAimCtrl : MonoBehaviour
         return CharRelationResolver.CanReceiveBasicAttack(selfUnit, target.gameObject);
     }
 
-    private Vector3 ResolveWorldDirectionFromStick(Vector2 stickInput)
+    private bool TryResolveCurrentDirectionalAimDirection(out Vector3 direction)
     {
+        direction = Vector3.zero;
+        return TryGetDirectionalAimInput(out Vector2 directionalInput) &&
+               TryResolveWorldDirectionFromInput(directionalInput, out direction);
+    }
+
+    private bool TryGetDirectionalAimInput(out Vector2 directionalInput)
+    {
+        directionalInput = Vector2.zero;
+        if (_charCtrl == null || _charCtrl.Param == null)
+        {
+            return false;
+        }
+
+        directionalInput = _charCtrl.Param.AimDirection;
+        return directionalInput.sqrMagnitude > 0.0001f;
+    }
+
+    private float ResolveDirectionalLockRange(GameObject selfUnit)
+    {
+        float lockRange = Mathf.Max(0.1f, gamepadLockSwitchRange);
+        float attackRange = CharResourceResolver.GetMaxAttackRange(selfUnit);
+        if (attackRange > 0f)
+        {
+            lockRange = Mathf.Max(lockRange, attackRange);
+        }
+
+        return lockRange;
+    }
+
+    private bool TryResolveWorldDirectionFromInput(Vector2 stickInput, out Vector3 worldDirection)
+    {
+        worldDirection = Vector3.zero;
         if (_mainCamera == null || stickInput.sqrMagnitude <= 0.001f)
         {
-            return Vector3.zero;
+            return false;
         }
 
         Vector3 forward = _mainCamera.transform.forward;
@@ -284,11 +383,17 @@ public class CharAimCtrl : MonoBehaviour
             right = transform.right;
         }
 
-        Vector3 worldDirection =
+        worldDirection =
             right.normalized * stickInput.x +
             forward.normalized * stickInput.y;
         worldDirection.y = 0f;
-        return worldDirection.sqrMagnitude > 0.001f ? worldDirection.normalized : Vector3.zero;
+        if (worldDirection.sqrMagnitude <= 0.001f)
+        {
+            return false;
+        }
+
+        worldDirection = worldDirection.normalized;
+        return true;
     }
 
     protected void OnDestroy()

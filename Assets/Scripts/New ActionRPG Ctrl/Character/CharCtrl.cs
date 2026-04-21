@@ -14,21 +14,29 @@ public class CharCtrl : MonoBehaviour
     public CharParam Param => _charParam;
     // ========== MODIFICATION START | 2026骞?鏈?鏃?==========
     public Transform LockedTarget => _lockedTarget;
+    public bool IsLocking => _aimCtrl != null && _aimCtrl.IsLockModeActive;
     // ========== MODIFICATION END | 2026骞?鏈?鏃?==========
     // ------------------------- 鍩虹缁勪欢 -------------------------
     public Vector3 moveDir;
 
     private float _verticalVelocity;
-    private float _dodgeTimer;
+    private float _dodgeRemain;
+    private Vector3 _dodgeDirection = Vector3.forward;
     
     public float moveSpeed = 3f;
     [SerializeField] private float turnSpeedDegrees = 720f;
     [SerializeField] private float _basicAttackFaceTurnSpeedDegrees = 2160f;
     [SerializeField] private float _forcedFaceToleranceDegrees = 2f;
     
-    // 鏈畬鍠勭殑鍐插埡
-    private float DodgeSpeed = 4f;
     [SerializeField] private float _dodgeDuration = 0.2f;
+    [SerializeField] private float _dodgeDistance = 2.6f;
+    [SerializeField] private float _dodgeInputDeadzone = 0.15f;
+    [SerializeField] private float _forwardDodgeAngleThreshold = 45f;
+    [SerializeField] private GameObject _dodgeVfxPrefab;
+    [SerializeField] private Transform _dodgeVfxMount;
+    [SerializeField] private Vector3 _dodgeVfxOffset;
+    [SerializeField] private bool _attachDodgeVfxToMount = true;
+    [SerializeField] private float _dodgeVfxLifetime = 1.5f;
     
     private CharAimCtrl _aimCtrl;
     // 鏂板锛氱敤浜庡瓨鍌ㄥ綋鍓嶉攣瀹氱洰鏍?
@@ -86,24 +94,44 @@ public class CharCtrl : MonoBehaviour
         
         
         _lockedTarget = _aimCtrl != null ? _aimCtrl.lockedTarget : null;
+        if (_charParam != null)
+        {
+            _charParam.isLock = IsLocking;
+        }
+        if (ShouldAbortActiveDodge())
+        {
+            ClearDodgeState();
+        }
         if (!isDead)
         {
+            if (_charParam != null && _charParam.Dodge)
+            {
+                TryStartDodge();
+            }
+
             ApplyMove();
             AnimCtrl();
-            if (_charParam.Dodge)
-            {
-                Dodge();
-            }
         }
         else if (_blackBoard != null)
         {
+            ClearDodgeState();
+            moveDir = Vector3.zero;
             _blackBoard.Motion.velocity = Vector3.zero;
             _blackBoard.Motion.isMoving = false;
         }
-
-        if (_dodgeTimer > 0f)
+        else
         {
-            _dodgeTimer -= Time.deltaTime;
+            ClearDodgeState();
+            moveDir = Vector3.zero;
+        }
+
+        if (_dodgeRemain > 0f)
+        {
+            _dodgeRemain -= Time.deltaTime;
+            if (_dodgeRemain <= 0f)
+            {
+                ClearDodgeState();
+            }
         }
 
         SyncBlackBoardMotion();
@@ -131,17 +159,22 @@ public class CharCtrl : MonoBehaviour
     /// </summary>
     private void ApplyMove()
     {
-        moveDir = new Vector3(Param.Locomotion.x, 0, Param.Locomotion.y);
-        moveDir = Quaternion.Euler(0, -45f, 0) * moveDir;
+        Vector3 planarDirection = IsDodgingActive()
+            ? _dodgeDirection
+            : ResolveMoveDirectionFromInput(Param.Locomotion);
+        moveDir = planarDirection;
         ApplyGravity();
 
-        float currentMoveSpeed = ResolveMoveSpeed();
-        Vector3 planarMove = new Vector3(moveDir.x, 0f, moveDir.z);
+        float currentMoveSpeed = IsDodgingActive()
+            ? ResolveDodgeSpeed()
+            : ResolveMoveSpeed();
+        Vector3 planarMove = new Vector3(planarDirection.x, 0f, planarDirection.z);
         Vector3 frameMove = planarMove * currentMoveSpeed * Time.deltaTime;
         frameMove.y = moveDir.y * Time.deltaTime;
         // 褰撳墠绉诲姩鍚屾椂璇诲彇涓ゅ閿侊細
         // 1. 鐘舵€佺郴缁熷揩鐓ч噷鐨勯檺鍒?        // 2. 鍔ㄤ綔绯荤粺閲岀殑杩愯鏃堕攣
-        if (!CanMoveByState() || _movementLocked || (_actionCtrl != null && _actionCtrl.IsMoveLocked()))
+        if (!IsDodgingActive() &&
+            (!CanMoveByState() || _movementLocked || (_actionCtrl != null && _actionCtrl.IsMoveLocked())))
         {
             frameMove.x = 0f;
             frameMove.z = 0f;
@@ -171,6 +204,12 @@ public class CharCtrl : MonoBehaviour
             return;
         }
 
+        if (IsDodgingActive())
+        {
+            SyncVelocity(appliedMove);
+            return;
+        }
+
         if (_skillFacingActive)
         {
             // Skill-facing keeps rotation inside CharCtrl so actions stay lightweight.
@@ -192,8 +231,19 @@ public class CharCtrl : MonoBehaviour
             return;
         }
 
+        bool isLocking = IsLocking;
+        if (!isLocking &&
+            _weaponCtrl != null &&
+            _weaponCtrl.ShouldKeepDirectionalAimFacingWhileMoving() &&
+            TryGetDirectionalAimDirection(out Vector3 directionalAimDirection))
+        {
+            RotateTowardsDirection(directionalAimDirection);
+            SyncVelocity(appliedMove);
+            return;
+        }
+
         // 非八向角色始终面朝移动方向；八向角色锁定时面朝敌人
-        bool faceLockTarget = Param.isLock && _lockedTarget != null && Has8DirLocomotion();
+        bool faceLockTarget = isLocking && _lockedTarget != null && Has8DirLocomotion();
 
         if (!faceLockTarget)
         {
@@ -319,6 +369,38 @@ public class CharCtrl : MonoBehaviour
             Mathf.Max(_basicAttackFaceTurnSpeedDegrees, turnSpeedDegrees));
     }
 
+    public bool TryGetDirectionalAimDirection(out Vector3 direction)
+    {
+        direction = Vector3.zero;
+        return _aimCtrl != null && _aimCtrl.TryGetDirectionalAimDirection(out direction);
+    }
+
+    public bool TryGetAttackFacingDirection(out Vector3 direction)
+    {
+        direction = Vector3.zero;
+        if (_charParam == null || _charParam.AttackFacingInput.sqrMagnitude <= 0.0001f)
+        {
+            return false;
+        }
+
+        direction = ResolveMoveDirectionFromInput(_charParam.AttackFacingInput);
+        direction.y = 0f;
+        if (direction.sqrMagnitude <= 0.001f)
+        {
+            direction = Vector3.zero;
+            return false;
+        }
+
+        direction.Normalize();
+        return true;
+    }
+
+    private static Vector3 ResolveMoveDirectionFromInput(Vector2 input)
+    {
+        Vector3 direction = new Vector3(input.x, 0f, input.y);
+        return Quaternion.Euler(0f, -45f, 0f) * direction;
+    }
+
     private void ApplyGravity()
     {
         if (_characterController.isGrounded == false)
@@ -330,9 +412,65 @@ public class CharCtrl : MonoBehaviour
             _verticalVelocity = -0.5f;
     }
     
-    private void Dodge()
+    private bool TryStartDodge()
     {
-        _dodgeTimer = Mathf.Max(_dodgeTimer, _dodgeDuration);
+        if (_charParam == null || _characterController == null || !_characterController.enabled)
+        {
+            return false;
+        }
+
+        if (isDead || IsDodgingActive() || _dodgeDuration <= 0f || !CanMoveByState())
+        {
+            return false;
+        }
+
+        Vector3 dodgeDirection = ResolveDodgeDirection();
+        if (dodgeDirection.sqrMagnitude <= 0.001f)
+        {
+            return false;
+        }
+
+        bool playForwardDodgeAnim = IsForwardDodge(dodgeDirection);
+
+        if (_weaponCtrl != null)
+        {
+            _weaponCtrl.PrepareForDodgeStart();
+        }
+
+        if (_actionCtrl != null)
+        {
+            CharActionReq req = new CharActionReq
+            {
+                type = CharActionType.Dodge,
+                state = CharActionState.Dodging,
+                src = this,
+                dur = Mathf.Max(0.01f, _dodgeDuration),
+                lockMove = true,
+                lockRotate = true,
+                interruptible = true,
+                animKey = playForwardDodgeAnim ? "Dodge" : string.Empty,
+            };
+
+            if (!_actionCtrl.TryStart(req))
+            {
+                return false;
+            }
+        }
+        else if (playForwardDodgeAnim && _animCtrl != null)
+        {
+            _animCtrl.PlayDodge();
+        }
+
+        _dodgeDirection = dodgeDirection;
+        _dodgeRemain = Mathf.Max(0.01f, _dodgeDuration);
+
+        if (playForwardDodgeAnim)
+        {
+            ForceFaceDirection(dodgeDirection, _dodgeDuration, true);
+        }
+
+        PlayDodgeVfx(dodgeDirection);
+        return true;
     }
     // ------------------------- 娴嬭瘯鐢ㄥ姩鐢绘帶鍒?-------------------------
     /// <summary>
@@ -345,13 +483,20 @@ public class CharCtrl : MonoBehaviour
             return;
         }
 
-        Vector3 planarMove = new Vector3(moveDir.x, 0f, moveDir.z);
-        if (_weaponCtrl != null && _weaponCtrl.ShouldSuppressMoveAnimation())
+        Vector3 planarMove = IsDodgingActive()
+            ? Vector3.zero
+            : new Vector3(moveDir.x, 0f, moveDir.z);
+        if (!IsDodgingActive() && _weaponCtrl != null && _weaponCtrl.ShouldSuppressMoveAnimation())
         {
             planarMove = Vector3.zero;
         }
 
-        _animCtrl.SetMove(planarMove, CanMoveByState(), Param.isLock, _lockedTarget);
+        _animCtrl.SetMove(
+            planarMove,
+            CanMoveByState(),
+            IsLocking,
+            _lockedTarget,
+            ShouldUseDirectionalStrafeLocomotion());
     }
     // ------------------------- 娴嬭瘯鐢ㄥ姩鐢绘帶鍒?-------------------------
     
@@ -378,6 +523,14 @@ public class CharCtrl : MonoBehaviour
     private bool Has8DirLocomotion()
     {
         return _animCtrl != null && _animCtrl.Has8DirLocomotion;
+    }
+
+    private bool ShouldUseDirectionalStrafeLocomotion()
+    {
+        return !IsLocking &&
+               _weaponCtrl != null &&
+               _weaponCtrl.ShouldUseDirectionalStrafeLocomotion() &&
+               TryGetDirectionalAimDirection(out _);
     }
 
     /// <summary>
@@ -420,12 +573,14 @@ public class CharCtrl : MonoBehaviour
     private float ResolveMoveSpeed()
     {
         float finalSpeed = CharRuntimeResolver.GetMoveSpeed(gameObject, moveSpeed);
-        if (_dodgeTimer > 0f)
-        {
-            finalSpeed *= Mathf.Max(1f, DodgeSpeed);
-        }
-
         return Mathf.Max(0f, finalSpeed);
+    }
+
+    private float ResolveDodgeSpeed()
+    {
+        return _dodgeDuration > 0.001f
+            ? Mathf.Max(0f, _dodgeDistance) / _dodgeDuration
+            : 0f;
     }
 
     private float ResolveTurnSpeed(float turnSpeedOverride = -1f)
@@ -454,6 +609,106 @@ public class CharCtrl : MonoBehaviour
         _blackBoard.Motion.velocity = Time.deltaTime > 0f
             ? planarFrameMove / Time.deltaTime
             : Vector3.zero;
+    }
+
+    private bool IsDodgingActive()
+    {
+        return _dodgeRemain > 0f;
+    }
+
+    private Vector3 ResolveDodgeDirection()
+    {
+        Vector3 inputDirection = ResolveMoveDirectionFromInput(_charParam.Locomotion);
+        inputDirection.y = 0f;
+        if (inputDirection.sqrMagnitude > _dodgeInputDeadzone * _dodgeInputDeadzone)
+        {
+            return inputDirection.normalized;
+        }
+
+        Vector3 facingDirection = transform.forward;
+        facingDirection.y = 0f;
+        if (facingDirection.sqrMagnitude <= 0.001f)
+        {
+            return Vector3.forward;
+        }
+
+        return facingDirection.normalized;
+    }
+
+    private bool IsForwardDodge(Vector3 dodgeDirection)
+    {
+        Vector3 facingDirection = transform.forward;
+        facingDirection.y = 0f;
+        if (facingDirection.sqrMagnitude <= 0.001f || dodgeDirection.sqrMagnitude <= 0.001f)
+        {
+            return true;
+        }
+
+        return Vector3.Angle(facingDirection.normalized, dodgeDirection.normalized)
+               <= Mathf.Clamp(_forwardDodgeAngleThreshold, 0f, 180f);
+    }
+
+    private void PlayDodgeVfx(Vector3 dodgeDirection)
+    {
+        if (_dodgeVfxPrefab == null || dodgeDirection.sqrMagnitude <= 0.001f)
+        {
+            return;
+        }
+
+        Transform mount = ResolveDodgeVfxMount();
+        Quaternion rotation = Quaternion.LookRotation(dodgeDirection.normalized, Vector3.up);
+        GameObject instance;
+
+        if (_attachDodgeVfxToMount && mount != null)
+        {
+            instance = Instantiate(_dodgeVfxPrefab, mount.position, rotation, mount);
+            instance.transform.localPosition += _dodgeVfxOffset;
+        }
+        else
+        {
+            Vector3 basePosition = mount != null ? mount.position : transform.position;
+            instance = Instantiate(_dodgeVfxPrefab, basePosition + rotation * _dodgeVfxOffset, rotation);
+        }
+
+        if (_dodgeVfxLifetime > 0f)
+        {
+            Destroy(instance, _dodgeVfxLifetime);
+        }
+    }
+
+    private Transform ResolveDodgeVfxMount()
+    {
+        if (_dodgeVfxMount != null)
+        {
+            return _dodgeVfxMount;
+        }
+
+        if (_animCtrl != null && _animCtrl.BodyAnim != null)
+        {
+            return _animCtrl.BodyAnim.transform;
+        }
+
+        return transform;
+    }
+
+    private bool HasActiveSelfDodgeAction()
+    {
+        return _actionCtrl != null
+               && _actionCtrl.CurReq != null
+               && _actionCtrl.CurReq.src == this
+               && _actionCtrl.CurReq.type == CharActionType.Dodge
+               && _actionCtrl.State != CharActionState.Idle;
+    }
+
+    private bool ShouldAbortActiveDodge()
+    {
+        return IsDodgingActive() && _actionCtrl != null && !HasActiveSelfDodgeAction();
+    }
+
+    private void ClearDodgeState()
+    {
+        _dodgeRemain = 0f;
+        _dodgeDirection = Vector3.zero;
     }
 
 }

@@ -17,8 +17,10 @@ public class CharSignalReader : MonoBehaviour
     {
         Vector2 GetMovementInput();
         Vector2 GetAimInput();
+        Vector2 GetAimDirectionInput();
+        Vector2 GetAttackFacingInput();
         AttackInputState GetAttackState();
-        bool GetLockInput();
+        ButtonInputState GetLockState();
         bool GetDodgeInput();
         void UpdateSkillInputs(List<bool> skillInputs, List<ButtonInputState> skillInputStates);
     }
@@ -39,13 +41,22 @@ public class CharSignalReader : MonoBehaviour
     /// </summary>
     private void Update()
     {
+        if (charCtrl == null || charCtrl.Param == null || currentInputSource == null)
+        {
+            return;
+        }
+
         Vector2 movementInput = currentInputSource.GetMovementInput();
         Vector2 aimInput = currentInputSource.GetAimInput();
+        Vector2 aimDirectionInput = currentInputSource.GetAimDirectionInput();
+        Vector2 attackFacingInput = currentInputSource.GetAttackFacingInput();
 
         charCtrl.Param.Locomotion = movementInput;
         charCtrl.Param.AimTarget = aimInput;
+        charCtrl.Param.AimDirection = aimDirectionInput;
+        charCtrl.Param.AttackFacingInput = attackFacingInput;
         charCtrl.Param.AttackState = currentInputSource.GetAttackState();
-        charCtrl.Param.isLock = currentInputSource.GetLockInput();
+        charCtrl.Param.LockState = currentInputSource.GetLockState();
         charCtrl.Param.Dodge = currentInputSource.GetDodgeInput();
         currentInputSource.UpdateSkillInputs(charCtrl.Param.SkillInputDown, charCtrl.Param.SkillInputStates);
     }
@@ -59,24 +70,46 @@ public class CharSignalReader : MonoBehaviour
 public class PlayerInputSource : CharSignalReader.ICharCtrlSignal
 {
     // 把持续按键转换成 down / held / up 三种更适合战斗逻辑的输入状态。
+    // Convert held buttons into down / held / up states for combat logic.
     private bool _wasAttackPressedLastFrame;
     private bool _wasDodgePressedLastFrame;
+    private bool _wasLockPressedLastFrame;
     private readonly List<bool> _skillWasPressedLastFrame = new List<bool>();
 
     public Vector2 GetMovementInput()
     {
-        return PlayerInputManager.instance.playerInputMovementValue;
+        PlayerInputManager inputManager = PlayerInputManager.instance;
+        return inputManager != null ? inputManager.playerInputMovementValue : Vector2.zero;
     }
 
     public Vector2 GetAimInput()
     {
-        return PlayerInputManager.instance.playerInputAimValue;
+        PlayerInputManager inputManager = PlayerInputManager.instance;
+        return inputManager != null ? inputManager.playerInputAimValue : Vector2.zero;
+    }
+
+    public Vector2 GetAimDirectionInput()
+    {
+        PlayerInputManager inputManager = PlayerInputManager.instance;
+        return inputManager != null ? inputManager.GamepadAimStick : Vector2.zero;
+    }
+
+    public Vector2 GetAttackFacingInput()
+    {
+        PlayerInputManager inputManager = PlayerInputManager.instance;
+        if (inputManager == null || !inputManager.IsUsingGamepadInput)
+        {
+            return Vector2.zero;
+        }
+
+        return inputManager.playerInputMovementValue;
     }
 
     public AttackInputState GetAttackState()
     {
+        PlayerInputManager inputManager = PlayerInputManager.instance;
         var state = new AttackInputState();
-        bool isPressed = PlayerInputManager.instance.playerInputAttackValue;
+        bool isPressed = inputManager != null && inputManager.playerInputAttackValue;
 
         state.isDown = isPressed && !_wasAttackPressedLastFrame;
         state.isHeld = isPressed;
@@ -88,20 +121,33 @@ public class PlayerInputSource : CharSignalReader.ICharCtrlSignal
 
     public bool GetDodgeInput()
     {
-        bool isPressed = PlayerInputManager.instance.playerInputDodgeValue;
+        PlayerInputManager inputManager = PlayerInputManager.instance;
+        bool isPressed = inputManager != null && inputManager.playerInputDodgeValue;
         bool triggered = isPressed && !_wasDodgePressedLastFrame;
         _wasDodgePressedLastFrame = isPressed;
         return triggered;
     }
 
-    public bool GetLockInput()
+    public ButtonInputState GetLockState()
     {
-        return PlayerInputManager.instance.playerInputLockValue;
+        PlayerInputManager inputManager = PlayerInputManager.instance;
+        var state = new ButtonInputState();
+        bool isPressed = inputManager != null && inputManager.playerInputLockValue;
+
+        state.isDown = isPressed && !_wasLockPressedLastFrame;
+        state.isHeld = isPressed;
+        state.isUp = !isPressed && _wasLockPressedLastFrame;
+
+        _wasLockPressedLastFrame = isPressed;
+        return state;
     }
 
     public void UpdateSkillInputs(List<bool> skillInputs, List<ButtonInputState> skillInputStates)
     {
-        var charSkillInputStates = PlayerInputManager.instance.PlayerInputSkillValues;
+        PlayerInputManager inputManager = PlayerInputManager.instance;
+        List<bool> charSkillInputStates = inputManager != null
+            ? inputManager.PlayerInputSkillValues
+            : new List<bool>();
 
         while (_skillWasPressedLastFrame.Count < skillInputs.Count)
         {
@@ -132,12 +178,29 @@ public class PlayerInputSource : CharSignalReader.ICharCtrlSignal
 
 public class AIInputSource : CharSignalReader.ICharCtrlSignal
 {
+    // AI can later provide the same normalized control data contract.
+    public Vector2 GetMovementInput()
+    {
+        return Vector2.zero;
+    }
+
+    /*
     // 当前还是空实现，但接口已与玩家输入对齐，后续 AI 可直接复用整套角色控制器。
     public Vector2 GetMovementInput()
     {
         return Vector2.zero;
     }
+
+    */
     public Vector2 GetAimInput()
+    {
+        return Vector2.zero;
+    }
+    public Vector2 GetAimDirectionInput()
+    {
+        return Vector2.zero;
+    }
+    public Vector2 GetAttackFacingInput()
     {
         return Vector2.zero;
     }
@@ -146,9 +209,9 @@ public class AIInputSource : CharSignalReader.ICharCtrlSignal
         return new AttackInputState();
     }
 
-    public bool GetLockInput()
+    public ButtonInputState GetLockState()
     {
-        return false;
+        return default;
     }
 
     public bool GetDodgeInput()

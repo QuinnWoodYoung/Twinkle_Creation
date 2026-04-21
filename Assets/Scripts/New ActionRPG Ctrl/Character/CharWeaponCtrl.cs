@@ -7,8 +7,24 @@
 /// </summary>
 public class CharWeaponCtrl : MonoBehaviour
 {
+    private enum BufferedAttackKind
+    {
+        None,
+        Light,
+        Combo,
+        ChargeRelease,
+    }
+
+    public struct DodgeAttackContext
+    {
+        public bool isDodgeAttack;
+        public float damageMultiplier;
+        public float damageBonus;
+    }
+
     // Fired after the logical weapon state is fully synchronized.
     public event System.Action<WeaponType> WeaponChanged;
+    public event System.Action<DodgeAttackContext> DodgeAttackStarted;
 
     private CharCtrl _charCtrl;
     private CharAnimCtrl _animCtrl;
@@ -24,6 +40,11 @@ public class CharWeaponCtrl : MonoBehaviour
     private float _comboResetRemain;
     private bool _isChargingBasicAttack;
     private float _chargeHoldTime;
+    private float _attackBufferRemain;
+    private BufferedAttackKind _bufferedAttackKind;
+    private string _bufferedAttackAnimKey;
+    private float _postDodgeAttackWindowRemain;
+    private DodgeAttackContext _lastAttackContext;
 
     [SerializeField] private Transform _weaponRoot;
     [SerializeField] private Animator _weaponAnimator;
@@ -74,9 +95,17 @@ public class CharWeaponCtrl : MonoBehaviour
     [Tooltip("用于朝向修正的短暂锁向时长。")]
     [SerializeField] private float _attackFaceLockDuration = 0.08f;
 
+    [Header("Dodge Attack")]
+    [Tooltip("普攻在闪避动作占用期间按下时，最多缓冲多久。")]
+    [SerializeField] private float _attackBufferDuration = 0.18f;
+
     private float _activeAttackAnimSpeed = 1f;
     private float _meleeComboAimGraceRemain;
     private Vector3 _meleeComboAimDirection = Vector3.forward;
+
+    public bool HasBufferedAttack => _bufferedAttackKind != BufferedAttackKind.None && _attackBufferRemain > 0f;
+    public bool IsPostDodgeAttackWindowActive => _postDodgeAttackWindowRemain > 0f;
+    public DodgeAttackContext LastAttackContext => _lastAttackContext;
 
     // ──────────────────── Lifecycle ────────────────────
 
@@ -132,6 +161,24 @@ public class CharWeaponCtrl : MonoBehaviour
         if (_attackCooldownRemain > 0f)
             _attackCooldownRemain -= Time.deltaTime;
 
+        if (_attackBufferRemain > 0f)
+        {
+            _attackBufferRemain -= Time.deltaTime;
+            if (_attackBufferRemain <= 0f)
+            {
+                ClearBufferedAttack();
+            }
+        }
+
+        if (_postDodgeAttackWindowRemain > 0f)
+        {
+            _postDodgeAttackWindowRemain -= Time.deltaTime;
+            if (_postDodgeAttackWindowRemain < 0f)
+            {
+                _postDodgeAttackWindowRemain = 0f;
+            }
+        }
+
         if (_meleeComboAimGraceRemain > 0f)
             _meleeComboAimGraceRemain -= Time.deltaTime;
 
@@ -153,6 +200,7 @@ public class CharWeaponCtrl : MonoBehaviour
             NotifyWeaponChanged();
         }
 
+        TryConsumeBufferedAttack();
         UpdateAtkInput();
     }
 
@@ -179,7 +227,17 @@ public class CharWeaponCtrl : MonoBehaviour
         switch (_resolvedAttackMode)
         {
             case BasicAttackMode.MeleeCombo:
-                if (input.isDown) TryComboAtk(profile);
+                if (input.isDown)
+                {
+                    if (IsSelfDodgeActionActive())
+                    {
+                        BufferAttack(BufferedAttackKind.Combo);
+                    }
+                    else
+                    {
+                        TryComboAtk(profile);
+                    }
+                }
                 return;
 
             case BasicAttackMode.RangedChargeRelease:
@@ -195,11 +253,21 @@ public class CharWeaponCtrl : MonoBehaviour
         if (repeat)
         {
             if (input.isHeld || input.isDown)
-                TryLightAtk(profile, ResolveDefaultAttackAnimKey(profile));
+            {
+                string attackAnimKey = ResolveDefaultAttackAnimKey(profile);
+                if (!TryLightAtk(profile, attackAnimKey) && input.isDown && IsSelfDodgeActionActive())
+                {
+                    BufferAttack(BufferedAttackKind.Light, attackAnimKey);
+                }
+            }
         }
         else if (input.isDown)
         {
-            TryLightAtk(profile, ResolveDefaultAttackAnimKey(profile));
+            string attackAnimKey = ResolveDefaultAttackAnimKey(profile);
+            if (!TryLightAtk(profile, attackAnimKey) && IsSelfDodgeActionActive())
+            {
+                BufferAttack(BufferedAttackKind.Light, attackAnimKey);
+            }
         }
     }
 
@@ -207,19 +275,66 @@ public class CharWeaponCtrl : MonoBehaviour
 
     private void OnActionStart(CharActionReq req)
     {
-        if (req == null || req.type != CharActionType.Atk || req.src != this) return;
+        if (req == null)
+        {
+            return;
+        }
+
+        if (req.type == CharActionType.Dodge && req.src == _charCtrl)
+        {
+            _postDodgeAttackWindowRemain = 0f;
+            return;
+        }
+
+        if (req.type != CharActionType.Atk || req.src != this)
+        {
+            return;
+        }
+
         PlayAtk(req.animKey);
     }
 
     private void OnActionEnd(CharActionReq req)
     {
-        if (req == null || req.type != CharActionType.Atk || req.src != this) return;
+        if (req == null)
+        {
+            return;
+        }
+
+        if (req.type == CharActionType.Dodge && req.src == _charCtrl)
+        {
+            BeginPostDodgeAttackWindow();
+            TryConsumeBufferedAttack();
+            return;
+        }
+
+        if (req.type != CharActionType.Atk || req.src != this)
+        {
+            return;
+        }
+
         SetAttackAnimSpeed(1f);
     }
 
     private void OnActionInterrupted(CharActionReq req, string reason)
     {
-        if (req == null || req.type != CharActionType.Atk || req.src != this) return;
+        if (req == null)
+        {
+            return;
+        }
+
+        if (req.type == CharActionType.Dodge && req.src == _charCtrl)
+        {
+            BeginPostDodgeAttackWindow();
+            TryConsumeBufferedAttack();
+            return;
+        }
+
+        if (req.type != CharActionType.Atk || req.src != this)
+        {
+            return;
+        }
+
         _meleeComboAimGraceRemain = 0f;
         SetAttackAnimSpeed(1f);
     }
@@ -237,8 +352,10 @@ public class CharWeaponCtrl : MonoBehaviour
         string finalAnimKey = string.IsNullOrEmpty(animKey) ? _lightAtkTrig : animKey;
         float dur = ResolveAttackDuration(profile);
         bool lockMove = !CanMoveWhileAttacking(profile);
+        bool allowReplaceActiveAttack = IsRangedAttackMode(_resolvedAttackMode);
 
-        if (!TryStartAtk(finalAnimKey, dur, lockMove, _lightAtkLockRotate, true, false, dur))
+        if (!TryStartAtk(finalAnimKey, dur, lockMove, _lightAtkLockRotate,
+                true, allowReplaceActiveAttack, dur))
             return false;
 
         if (_actionCtrl == null)
@@ -297,17 +414,17 @@ public class CharWeaponCtrl : MonoBehaviour
     /// <summary>
     /// 近战连段普攻入口。
     /// </summary>
-    private void TryComboAtk(AttackData_SO profile)
+    private bool TryComboAtk(AttackData_SO profile)
     {
         if (!CanStartResolvedAttack(profile, _resolvedAttackMode))
-            return;
+            return false;
 
         string comboAnimKey = ResolveComboAnimKey(profile, out int comboStageIndex);
         bool lockMove = !CanMoveWhileAttacking(profile);
 
         if (!TryStartAtk(comboAnimKey, Mathf.Max(0.01f, _lightAtkDur),
                 lockMove, _lightAtkLockRotate, false, true))
-            return;
+            return false;
 
         _activeComboStageIndex = comboStageIndex;
 
@@ -323,6 +440,7 @@ public class CharWeaponCtrl : MonoBehaviour
 
         _comboResetRemain = profile != null && profile.comboResetTime > 0f
             ? profile.comboResetTime : 0.6f;
+        return true;
     }
 
     private string ResolveComboAnimKey(AttackData_SO profile, out int comboStageIndex)
@@ -344,7 +462,15 @@ public class CharWeaponCtrl : MonoBehaviour
     private void UpdateChargeReleaseInput(AttackInputState input, AttackData_SO profile)
     {
         if (input.isDown)
+        {
+            if (IsSelfDodgeActionActive())
+            {
+                BufferAttack(BufferedAttackKind.ChargeRelease, ResolveChargeReleaseAnimKey(profile));
+                return;
+            }
+
             TryBeginChargeAttack();
+        }
 
         if (_isChargingBasicAttack && input.isHeld)
         {
@@ -356,36 +482,47 @@ public class CharWeaponCtrl : MonoBehaviour
 
         if (_isChargingBasicAttack && input.isUp)
         {
-            float minCharge = profile != null && profile.minChargeTime > 0f
-                ? profile.minChargeTime : 0.15f;
-
-            if (_chargeHoldTime >= minCharge)
-            {
-                string releaseKey = profile != null && !string.IsNullOrEmpty(profile.chargeReleaseAnimKey)
-                    ? profile.chargeReleaseAnimKey
-                    : ResolveDefaultAttackAnimKey(profile);
-                TryLightAtk(profile, releaseKey);
-            }
-
-            ResetChargeAttack();
+            TryReleaseChargeAttack(profile, false);
         }
     }
 
-    private void TryBeginChargeAttack()
+    private bool TryBeginChargeAttack()
     {
         if (_attackCooldownRemain > 0f)
-            return;
+            return false;
         if (_actionCtrl != null && _actionCtrl.CurReq != null && _actionCtrl.State != CharActionState.Idle)
-            return;
+            return false;
 
         _isChargingBasicAttack = true;
         _chargeHoldTime = 0f;
+        return true;
     }
 
     private void ResetChargeAttack()
     {
         _isChargingBasicAttack = false;
         _chargeHoldTime = 0f;
+    }
+
+    private bool TryReleaseChargeAttack(AttackData_SO profile, bool bypassMinCharge)
+    {
+        if (!_isChargingBasicAttack)
+        {
+            return false;
+        }
+
+        float minCharge = profile != null && profile.minChargeTime > 0f
+            ? profile.minChargeTime : 0.15f;
+        bool canRelease = bypassMinCharge || _chargeHoldTime >= minCharge;
+        if (!canRelease)
+        {
+            ResetChargeAttack();
+            return false;
+        }
+
+        bool success = TryLightAtk(profile, ResolveChargeReleaseAnimKey(profile));
+        ResetChargeAttack();
+        return success;
     }
 
     // ──────────────────── Play Attack ────────────────────
@@ -397,6 +534,12 @@ public class CharWeaponCtrl : MonoBehaviour
     private void PlayAtk(string trig)
     {
         AttackData_SO profile = ResolveAttackProfile();
+        _lastAttackContext = ConsumeDodgeAttackContext(profile);
+        if (_lastAttackContext.isDodgeAttack)
+        {
+            DodgeAttackStarted?.Invoke(_lastAttackContext);
+        }
+
         SetAttackAnimSpeed(1f);
 
         BasicAttackTargetInfo targetInfo = ResolveBasicAttackTarget(profile, _resolvedAttackMode);
@@ -643,6 +786,13 @@ public class CharWeaponCtrl : MonoBehaviour
         return Weapon.GetAtkAnimName(_currentWeapon);
     }
 
+    private string ResolveChargeReleaseAnimKey(AttackData_SO profile)
+    {
+        return profile != null && !string.IsNullOrEmpty(profile.chargeReleaseAnimKey)
+            ? profile.chargeReleaseAnimKey
+            : ResolveDefaultAttackAnimKey(profile);
+    }
+
     private float ResolveAttackDuration(AttackData_SO profile)
     {
         return profile != null && profile.attackTime > 0f ? profile.attackTime : _lightAtkDur;
@@ -682,9 +832,19 @@ public class CharWeaponCtrl : MonoBehaviour
         float assistAngle = isRanged ? _rangedAssistAngle : _meleeAssistAngle;
         bool preferLocked = ResolvePreferLockedTarget(attackMode, profile);
         bool useLockedAim = attackMode != BasicAttackMode.RangedStraight;
+        bool useDirectionalAimInput = UsesDirectionalAimInput(profile);
+        bool useAttackFacingInput = UsesAttackFacingInput(profile);
 
         return CharBasicAttackTargeting.Resolve(
-            gameObject, _charCtrl, targetingMode, range, assistAngle, preferLocked, useLockedAim);
+            gameObject,
+            _charCtrl,
+            targetingMode,
+            range,
+            assistAngle,
+            preferLocked,
+            useLockedAim,
+            useDirectionalAimInput,
+            useAttackFacingInput);
     }
 
     private BasicAttackTargetingMode ResolveTargetingMode(BasicAttackMode attackMode, AttackData_SO profile)
@@ -763,6 +923,37 @@ public class CharWeaponCtrl : MonoBehaviour
         return profile == null || profile.canMoveWhileAttack;
     }
 
+    public bool UsesDirectionalAimInput()
+    {
+        return UsesDirectionalAimInput(ResolveAttackProfile());
+    }
+
+    public bool ShouldKeepDirectionalAimFacingWhileMoving()
+    {
+        AttackData_SO profile = ResolveAttackProfile();
+        return profile != null &&
+               profile.useDirectionalAimInput &&
+               profile.keepDirectionalAimFacingWhileMoving;
+    }
+
+    public bool ShouldUseDirectionalStrafeLocomotion()
+    {
+        AttackData_SO profile = ResolveAttackProfile();
+        return profile != null &&
+               profile.useDirectionalAimInput &&
+               profile.useDirectionalStrafeLocomotion;
+    }
+
+    private static bool UsesDirectionalAimInput(AttackData_SO profile)
+    {
+        return profile != null && profile.useDirectionalAimInput;
+    }
+
+    private static bool UsesAttackFacingInput(AttackData_SO profile)
+    {
+        return profile != null && profile.useAttackFacingInput;
+    }
+
     public bool TryGetMeleeAttackAimDirection(out Vector3 direction)
     {
         direction = Vector3.zero;
@@ -781,7 +972,12 @@ public class CharWeaponCtrl : MonoBehaviour
             || _meleeComboAimGraceRemain > 0f
             || HasActiveSelfAttackAction();
 
-        Vector3 aimDir = CharBasicAttackTargeting.ResolveAimDirection(gameObject, _charCtrl, false);
+        Vector3 aimDir = CharBasicAttackTargeting.ResolveAimDirection(
+            gameObject,
+            _charCtrl,
+            false,
+            UsesDirectionalAimInput(ResolveAttackProfile()),
+            UsesAttackFacingInput(ResolveAttackProfile()));
         if (aimDir.sqrMagnitude > 0.001f)
             _meleeComboAimDirection = aimDir.normalized;
 
@@ -790,6 +986,50 @@ public class CharWeaponCtrl : MonoBehaviour
 
         direction = _meleeComboAimDirection;
         return true;
+    }
+
+    public void PrepareForDodgeStart()
+    {
+        AttackData_SO profile = ResolveAttackProfile();
+        if (_resolvedAttackMode == BasicAttackMode.RangedChargeRelease &&
+            _currentWeapon == WeaponType.Bow &&
+            _isChargingBasicAttack &&
+            ShouldReleaseChargeAttackOnDodge(profile))
+        {
+            TryReleaseChargeAttack(profile, true);
+            return;
+        }
+
+        if (HasActiveSelfAttackAction())
+        {
+            return;
+        }
+
+        if (_charCtrl == null || _charCtrl.Param == null)
+        {
+            return;
+        }
+
+        AttackInputState input = _charCtrl.Param.AttackState;
+        if (!input.isDown)
+        {
+            return;
+        }
+
+        switch (_resolvedAttackMode)
+        {
+            case BasicAttackMode.MeleeCombo:
+                BufferAttack(BufferedAttackKind.Combo);
+                break;
+
+            case BasicAttackMode.RangedChargeRelease:
+                BufferAttack(BufferedAttackKind.ChargeRelease, ResolveChargeReleaseAnimKey(profile));
+                break;
+
+            default:
+                BufferAttack(BufferedAttackKind.Light, ResolveDefaultAttackAnimKey(profile));
+                break;
+        }
     }
 
     private void PlayAttackCastVfx(AttackData_SO profile, BasicAttackTargetInfo targetInfo)
@@ -986,6 +1226,15 @@ public class CharWeaponCtrl : MonoBehaviour
             && _actionCtrl.State != CharActionState.Idle;
     }
 
+    private bool IsSelfDodgeActionActive()
+    {
+        return _actionCtrl != null
+            && _actionCtrl.CurReq != null
+            && _actionCtrl.CurReq.type == CharActionType.Dodge
+            && _actionCtrl.CurReq.src == _charCtrl
+            && _actionCtrl.State != CharActionState.Idle;
+    }
+
     private bool CanReplaceActiveAttack(bool allowed)
     {
         return allowed
@@ -999,6 +1248,87 @@ public class CharWeaponCtrl : MonoBehaviour
     {
         return _resolvedAttackMode == BasicAttackMode.MeleeCombo
             && (HasActiveSelfAttackAction() || _meleeComboAimGraceRemain > 0f);
+    }
+
+    private void BufferAttack(BufferedAttackKind attackKind, string animKey = null)
+    {
+        if (attackKind == BufferedAttackKind.None)
+        {
+            return;
+        }
+
+        _bufferedAttackKind = attackKind;
+        _bufferedAttackAnimKey = animKey;
+        _attackBufferRemain = Mathf.Max(_attackBufferDuration, 0.01f);
+    }
+
+    private void ClearBufferedAttack()
+    {
+        _bufferedAttackKind = BufferedAttackKind.None;
+        _bufferedAttackAnimKey = null;
+        _attackBufferRemain = 0f;
+    }
+
+    private void TryConsumeBufferedAttack()
+    {
+        if (!HasBufferedAttack || IsSelfDodgeActionActive())
+        {
+            return;
+        }
+
+        AttackData_SO profile = ResolveAttackProfile();
+        bool success = false;
+        switch (_bufferedAttackKind)
+        {
+            case BufferedAttackKind.Light:
+                success = TryLightAtk(profile, _bufferedAttackAnimKey);
+                break;
+
+            case BufferedAttackKind.Combo:
+                success = TryComboAtk(profile);
+                break;
+
+            case BufferedAttackKind.ChargeRelease:
+                success = TryLightAtk(
+                    profile,
+                    string.IsNullOrEmpty(_bufferedAttackAnimKey)
+                        ? ResolveChargeReleaseAnimKey(profile)
+                        : _bufferedAttackAnimKey);
+                break;
+        }
+
+        if (success)
+        {
+            ClearBufferedAttack();
+        }
+    }
+
+    private void BeginPostDodgeAttackWindow()
+    {
+        AttackData_SO profile = ResolveAttackProfile();
+        float window = profile != null ? Mathf.Max(0f, profile.dodgeAttackWindow) : 0f;
+        _postDodgeAttackWindowRemain = window;
+    }
+
+    private DodgeAttackContext ConsumeDodgeAttackContext(AttackData_SO profile)
+    {
+        if (_postDodgeAttackWindowRemain <= 0f)
+        {
+            return default;
+        }
+
+        _postDodgeAttackWindowRemain = 0f;
+        return new DodgeAttackContext
+        {
+            isDodgeAttack = true,
+            damageMultiplier = profile != null ? profile.dodgeAttackDamageMultiplier : 1f,
+            damageBonus = profile != null ? profile.dodgeAttackDamageBonus : 0f,
+        };
+    }
+
+    private static bool ShouldReleaseChargeAttackOnDodge(AttackData_SO profile)
+    {
+        return profile == null || profile.releaseChargeAttackOnDodge;
     }
 
     // ──────────────────── Weapon Caching ────────────────────

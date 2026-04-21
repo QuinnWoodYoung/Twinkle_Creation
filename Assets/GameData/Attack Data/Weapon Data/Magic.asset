@@ -14,17 +14,21 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   attackRange: 0
   maxAttackRange: 0
-  attackSpeed: 0
+  rangedAttackSpeed: 5
   coolDown: 0
   attackTime: 0
   minDamage: 20
   maxDamage: 20
-  basicAttackMode: 2
+  basicAttackMode: 1
   attackAnimKey: Attack
   comboAnimKeys: []
-  comboResetTime: 0.6
+  comboResetTime: 0
   canMoveWhileAttack: 1
   useUpperBodyMoveAttackPresentation: 0
+  useDirectionalAimInput: 1
+  useAttackFacingInput: 0
+  keepDirectionalAimFacingWhileMoving: 1
+  useDirectionalStrafeLocomotion: 1
   useLogicHitResolution: 1
   logicHitDelay: 0.08
   allowLegacyCollisionDamage: 0
@@ -45,13 +49,17 @@ MonoBehaviour:
   projectileImpactDistance: 0.35
   projectileTargetHeightOffset: 0.1
   projectilePrefab: {fileID: 1666856683633650081, guid: c8b762c540a012b4d80f752cf1adbc37, type: 3}
-  projectileSpeed: 6
+  projectileSpeed: 20
   homingTurnSpeed: 18
   preferLockedTarget: 1
   enableSoftLock: 1
   minChargeTime: 0.15
   maxChargeTime: 1.2
   chargeReleaseAnimKey: Attack
+  releaseChargeAttackOnDodge: 1
+  dodgeAttackWindow: 0.18
+  dodgeAttackDamageMultiplier: 1
+  dodgeAttackDamageBonus: 0
   attackCastVfx: {fileID: 0}
   attackHitVfx: {fileID: 6750108211637369354, guid: 34f3a8b34366bc5469ddbf9e468212fa, type: 3}
   attackVfxPointName: BasicAttack VFX
@@ -63,3 +71,4 @@ MonoBehaviour:
   attackHitVfxLifetime: 2
   attackCastVfxOffset: {x: 0, y: 0, z: 0}
   attackHitVfxOffset: {x: 0, y: 0, z: 0}
+  meleeSlashVfxEntries: []

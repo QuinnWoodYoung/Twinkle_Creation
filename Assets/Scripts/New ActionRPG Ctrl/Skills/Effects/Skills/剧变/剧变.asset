@@ -38,8 +38,8 @@ MonoBehaviour:
   lockMovementDuringFacing: 1
   cancelFacingCastOnMoveInput: 0
   useAimPreview: 1
-  previewShape: 3
-  previewAnchor: 2
+  previewShape: 1
+  previewAnchor: 0
   previewRadius: 4
   previewLength: 0
   previewWidth: 0

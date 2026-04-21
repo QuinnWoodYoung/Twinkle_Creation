@@ -19,12 +19,16 @@ MonoBehaviour:
   attackTime: 0.5
   minDamage: 30
   maxDamage: 35
-  basicAttackMode: 3
+  basicAttackMode: 1
   attackAnimKey: Attack
   comboAnimKeys: []
   comboResetTime: 0.6
   canMoveWhileAttack: 1
   useUpperBodyMoveAttackPresentation: 0
+  useDirectionalAimInput: 1
+  useAttackFacingInput: 0
+  keepDirectionalAimFacingWhileMoving: 1
+  useDirectionalStrafeLocomotion: 1
   useLogicHitResolution: 1
   logicHitDelay: 0.08
   allowLegacyCollisionDamage: 0
@@ -52,6 +56,10 @@ MonoBehaviour:
   minChargeTime: 0.15
   maxChargeTime: 1.2
   chargeReleaseAnimKey: Attack
+  releaseChargeAttackOnDodge: 1
+  dodgeAttackWindow: 0.18
+  dodgeAttackDamageMultiplier: 1
+  dodgeAttackDamageBonus: 0
   attackCastVfx: {fileID: 0}
   attackHitVfx: {fileID: 1835174905073365006, guid: adfd6c86cf180e64aaaa1bece2395926, type: 3}
   attackVfxPointName: BasicAttack VFX
@@ -63,3 +71,4 @@ MonoBehaviour:
   attackHitVfxLifetime: 2
   attackCastVfxOffset: {x: 0, y: 0, z: 0}
   attackHitVfxOffset: {x: 0, y: 0, z: 0}
+  meleeSlashVfxEntries: []

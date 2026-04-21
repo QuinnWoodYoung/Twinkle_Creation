@@ -75,6 +75,25 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: ed5e9b2793f30f84daf453fd08323e48, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  _target: {fileID: 0}
+  _moveSpeed: 1000000
+  _turnSpeed: 18
+  _useHoming: 0
+  _targetHeightOffset: 0.1
+  _impactDistance: 0.2
+  _logicHitRadius: 0.45
+  _verticalHitTolerance: 1.2
+  _followGround: 1
+  _groundOffset: 0.9
+  _groundProbeHeight: 4
+  _groundProbeDistance: 12
+  _useLogicHit: 1
+  _useLegacyCollisionDamage: 0
+  _targetAimHeight: 0.55
+  _impactVfx: {fileID: 0}
+  _attachImpactVfxToTarget: 0
+  _impactVfxOffset: {x: 0, y: 0, z: 0}
+  _impactVfxLifetime: 2
   launcher: {fileID: 0}
 --- !u!1 &6487482149064623806
 GameObject:

@@ -25,6 +25,10 @@ MonoBehaviour:
   comboResetTime: 0.6
   canMoveWhileAttack: 0
   useUpperBodyMoveAttackPresentation: 0
+  useDirectionalAimInput: 0
+  useAttackFacingInput: 1
+  keepDirectionalAimFacingWhileMoving: 1
+  useDirectionalStrafeLocomotion: 1
   useLogicHitResolution: 1
   logicHitDelay: 0.08
   allowLegacyCollisionDamage: 0
@@ -53,7 +57,7 @@ MonoBehaviour:
   maxChargeTime: 1.2
   chargeReleaseAnimKey: Attack
   attackCastVfx: {fileID: 0}
-  attackHitVfx: {fileID: 1835174905073365006, guid: adfd6c86cf180e64aaaa1bece2395926, type: 3}
+  attackHitVfx: {fileID: 8649103730900180663, guid: d170123f1eae05a42b7a908a3bc4cc32, type: 3}
   attackVfxPointName: BasicAttack VFX
   projectileSpawnPointName: 
   preferOwnerAttackVfxPoint: 1

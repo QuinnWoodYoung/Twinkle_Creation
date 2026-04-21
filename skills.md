@@ -470,3 +470,106 @@
   - `Assets/Scripts/New ActionRPG Ctrl/Character/CharSkillCtrl.cs.codex_new`
   - Unity 通常会忽略它，但后续应择机清理。
 - 当前未完成 Unity 运行态验证，以上结论主要基于代码和资源静态检查。
+---
+
+## 2026-04-21 Dodge System Status
+
+### Scope Of This Round
+- Goal:
+  finish the dodge interaction layer before invulnerability-frame work.
+- Implemented now:
+  - directional dodge displacement
+  - forward-only dodge animation trigger
+  - dodge VFX playback
+  - dodge attack input buffering
+  - post-dodge attack hook window
+  - bow charge-release on dodge
+  - fallback body animation layer / locomotion bool when weapon presentation config is missing
+
+### Current Dodge Rules
+- Input:
+  `CharSignalReader -> CharParam.Dodge -> CharCtrl`
+- Direction:
+  - if locomotion input exists, dodge along that direction
+  - if locomotion input is empty, dodge along current facing
+- Runtime:
+  - dodge is no longer only a temporary move-speed multiplier
+  - `CharCtrl` now drives a short locked displacement using `_dodgeDistance` and `_dodgeDuration`
+- Animation:
+  - only forward dodge plays body dodge animation
+  - dodge uses a dedicated trigger path and no longer reuses the skill `Dash` trigger
+  - default dodge trigger name is `DodgeAction`
+- VFX:
+  - all dodge directions can spawn dodge VFX
+  - VFX can be attached to the character and rotated to the actual dodge direction
+
+### Files Touched For Dodge
+- `Assets/Scripts/New ActionRPG Ctrl/Character/CharCtrl.cs`
+- `Assets/Scripts/New ActionRPG Ctrl/Character/CharAnimCtrl.cs`
+- `Assets/Scripts/New ActionRPG Ctrl/Character/CharWeaponCtrl.cs`
+- `Assets/Scripts/Combat States/AttackData_SO.cs`
+
+### Dodge Attack Interaction
+- Current built-in basic attack flow now buffers attack input during self dodge.
+- When dodge ends, buffered attack is retried immediately.
+- After dodge ends, a short `dodgeAttackWindow` can mark the next basic attack as a dodge follow-up attack.
+- This currently covers the built-in basic attack flow:
+  - `MeleeCombo`
+  - `RangedStraight`
+  - `RangedHoming`
+  - `RangedChargeRelease`
+- This is not a blanket guarantee for all future custom weapon logic or skill logic.
+
+### Bow Special Rule
+- For `RangedChargeRelease` bows:
+  - if the bow is charging and dodge is pressed
+  - and `AttackData_SO.releaseChargeAttackOnDodge == true`
+  - the current charged shot is released first, then dodge starts
+
+### Post-Dodge Attack Hook
+- `AttackData_SO` now exposes:
+  - `dodgeAttackWindow`
+  - `dodgeAttackDamageMultiplier`
+  - `dodgeAttackDamageBonus`
+- Current intent:
+  - these are extension hooks only
+  - current runtime stores them in `CharWeaponCtrl.DodgeAttackContext`
+  - current runtime does not force a generic damage formula from them
+- Runtime bridge:
+  - `CharWeaponCtrl.LastAttackContext`
+  - `CharWeaponCtrl.DodgeAttackStarted`
+
+### Weapon Presentation Fallback
+- `CharAnimCtrl` now supports inspector fallback fields:
+  - `_defaultWeaponLayerName`
+  - `_defaultLocomotionBoolName`
+- Fallback is used when:
+  - no weapon is equipped
+  - no binding exists for the current weapon type
+  - configured layer does not exist in the animator controller
+  - configured locomotion bool does not exist in the animator controller
+
+### Ranged Attack Speed Notes
+- Practical cadence priority for ranged basic attack is:
+  1. `AttackData_SO.coolDown`
+  2. `AttackData_SO.rangedAttackSpeed`
+  3. fallback to attack duration
+- Runtime path:
+  - `CharWeaponCtrl.BeginAttackCooldown()`
+  - `CharResourceResolver.GetAttackCooldown()`
+  - `CharResourceResolver.GetRangedAttackSpeed()`
+- Authoring rule:
+  - if `coolDown > 0`, it overrides ranged cadence directly
+  - if `coolDown == 0`, cadence falls back to `1 / rangedAttackSpeed`
+- Override path:
+  - `CharBlackBoardInitializer` can override runtime ranged speed and cooldown through:
+    - `_rangedAttackSpeed`
+    - `_attackCooldown`
+
+### Validation Still Needed
+- No Unity playtest validation has been run yet for:
+  - dodge into melee combo
+  - dodge into ranged repeat
+  - dodge into homing ranged attack
+  - bow charge then dodge release
+  - dodge follow-up attack timing feel

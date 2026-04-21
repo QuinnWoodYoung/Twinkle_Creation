@@ -30,6 +30,10 @@ public class CharAnimCtrl : MonoBehaviour
     [Header("Weapon Presentation")]
     [Tooltip("每个角色自己配置：某种武器启用哪个攻击层，以及默认移动姿态使用哪个 Bool。")]
     [SerializeField] private WeaponAnimBinding[] _weaponBindings;
+    [Tooltip("无装备、无绑定，或绑定层不存在时，回退到这个默认动画层。留空表示不额外切层。")]
+    [SerializeField] private string _defaultWeaponLayerName;
+    [Tooltip("无装备、无绑定，或绑定 Bool 不存在时，回退到这个默认 locomotion Bool。留空表示不额外切换。")]
+    [SerializeField] private string _defaultLocomotionBoolName;
 
     [Header("State Params")]
     [SerializeField] private string _deadBool = "dead";
@@ -40,6 +44,7 @@ public class CharAnimCtrl : MonoBehaviour
     [SerializeField] private string _shootCastTrig = "Shoot";
     [SerializeField] private string _buffCastTrig = "Buff";
     [SerializeField] private string _dashCastTrig = "Dash";
+    [SerializeField] private string _dodgeTrig = "DodgeAction";
     [SerializeField] private string _hitTrig = "";
     [SerializeField] private string _channelBool = "Channeling";
 
@@ -127,7 +132,12 @@ public class CharAnimCtrl : MonoBehaviour
     /// 写入移动动画参数。
     /// 八方向角色会区分前后左右，非八方向角色只保留前进强度。
     /// </summary>
-    public void SetMove(Vector3 moveDir, bool canMove, bool isLock, Transform lockedTarget)
+    public void SetMove(
+        Vector3 moveDir,
+        bool canMove,
+        bool isLock,
+        Transform lockedTarget,
+        bool useDirectionalStrafe = false)
     {
         Animator animator = _bodyAnim;
         if (!HasAnimatorCtrl(animator))
@@ -146,7 +156,7 @@ public class CharAnimCtrl : MonoBehaviour
         }
 
         // 八向角色：非锁定时只写前进分量
-        if (!isLock || lockedTarget == null)
+        if ((!isLock || lockedTarget == null) && !useDirectionalStrafe)
         {
             SetFloatSafe(animator, _xVelParam, 0f);
             SetFloatSafe(animator, _zVelParam, Vector3.Dot(animDir, transform.forward));
@@ -184,6 +194,12 @@ public class CharAnimCtrl : MonoBehaviour
         SetTriggerSafe(_bodyAnim, finalTrig);
     }
 
+    public void PlayDodge(string trig = null)
+    {
+        string finalTrig = ResolveDodgeTrig(trig);
+        SetTriggerSafe(_bodyAnim, finalTrig);
+    }
+
     public void ApplyWeaponState(WeaponType weaponType)
     {
         if (_autoWeaponLayer)
@@ -215,6 +231,13 @@ public class CharAnimCtrl : MonoBehaviour
 
             case CharActionType.Cast:
                 PlayCast(req.animKey);
+                break;
+
+            case CharActionType.Dodge:
+                if (!string.IsNullOrEmpty(req.animKey))
+                {
+                    PlayDodge(req.animKey);
+                }
                 break;
 
             case CharActionType.HitReact:
@@ -256,12 +279,13 @@ public class CharAnimCtrl : MonoBehaviour
         }
 
         string[] weaponLayers = GetConfiguredWeaponLayerNames();
-        if (weaponLayers.Length == 0)
+        string defaultLayer = ResolveDefaultWeaponLayerName(animator);
+        if (weaponLayers.Length == 0 && string.IsNullOrEmpty(defaultLayer))
         {
             return;
         }
 
-        string activeLayer = ResolveWeaponLayerName(weaponType);
+        string activeLayer = ResolveEffectiveWeaponLayerName(animator, weaponType, defaultLayer);
 
         for (int i = 0; i < weaponLayers.Length; i++)
         {
@@ -279,6 +303,15 @@ public class CharAnimCtrl : MonoBehaviour
 
             animator.SetLayerWeight(layerIndex, layerName == activeLayer ? 1f : 0f);
         }
+
+        if (!string.IsNullOrEmpty(defaultLayer))
+        {
+            int defaultLayerIndex = animator.GetLayerIndex(defaultLayer);
+            if (defaultLayerIndex >= 0)
+            {
+                animator.SetLayerWeight(defaultLayerIndex, defaultLayer == activeLayer ? 1f : 0f);
+            }
+        }
     }
 
     private void ApplyWeaponBool(Animator animator, WeaponType weaponType)
@@ -291,10 +324,17 @@ public class CharAnimCtrl : MonoBehaviour
         string[] locomotionBools = GetConfiguredLocomotionBoolNames();
         if (locomotionBools.Length == 0)
         {
+            string fallbackBool = ResolveDefaultLocomotionBoolName(animator);
+            if (string.IsNullOrEmpty(fallbackBool))
+            {
+                return;
+            }
+
+            animator.SetBool(fallbackBool, true);
             return;
         }
 
-        string activeBool = ResolveLocomotionBoolName(weaponType);
+        string activeBool = ResolveEffectiveLocomotionBoolName(animator, weaponType);
         for (int i = 0; i < locomotionBools.Length; i++)
         {
             string boolName = locomotionBools[i];
@@ -307,6 +347,12 @@ public class CharAnimCtrl : MonoBehaviour
             {
                 animator.SetBool(boolName, boolName == activeBool);
             }
+        }
+
+        string defaultBool = ResolveDefaultLocomotionBoolName(animator);
+        if (!string.IsNullOrEmpty(defaultBool))
+        {
+            animator.SetBool(defaultBool, defaultBool == activeBool);
         }
     }
 
@@ -327,6 +373,23 @@ public class CharAnimCtrl : MonoBehaviour
                 return ResolveDefaultTrigger(_buffCastTrig, "Buff");
             case "Dash":
                 return ResolveDefaultTrigger(_dashCastTrig, "Dash");
+            default:
+                return key;
+        }
+    }
+
+    private string ResolveDodgeTrig(string key)
+    {
+        if (string.IsNullOrEmpty(key))
+        {
+            return ResolveDefaultTrigger(_dodgeTrig, "DodgeAction");
+        }
+
+        switch (key)
+        {
+            case "Dodge":
+            case "DodgeAction":
+                return ResolveDefaultTrigger(_dodgeTrig, "DodgeAction");
             default:
                 return key;
         }
@@ -445,6 +508,52 @@ public class CharAnimCtrl : MonoBehaviour
     {
         WeaponAnimBinding binding = FindWeaponBinding(weaponType);
         return binding != null ? binding.locomotionBoolName : string.Empty;
+    }
+
+    private string ResolveEffectiveWeaponLayerName(Animator animator, WeaponType weaponType, string defaultLayerName)
+    {
+        string configuredLayer = ResolveWeaponLayerName(weaponType);
+        if (!string.IsNullOrEmpty(configuredLayer) && animator.GetLayerIndex(configuredLayer) >= 0)
+        {
+            return configuredLayer;
+        }
+
+        return defaultLayerName;
+    }
+
+    private string ResolveEffectiveLocomotionBoolName(Animator animator, WeaponType weaponType)
+    {
+        string configuredBool = ResolveLocomotionBoolName(weaponType);
+        if (!string.IsNullOrEmpty(configuredBool) && HasParam(animator, configuredBool, AnimatorControllerParameterType.Bool))
+        {
+            return configuredBool;
+        }
+
+        return ResolveDefaultLocomotionBoolName(animator);
+    }
+
+    private string ResolveDefaultWeaponLayerName(Animator animator)
+    {
+        if (string.IsNullOrEmpty(_defaultWeaponLayerName))
+        {
+            return string.Empty;
+        }
+
+        return animator != null && animator.GetLayerIndex(_defaultWeaponLayerName) >= 0
+            ? _defaultWeaponLayerName
+            : string.Empty;
+    }
+
+    private string ResolveDefaultLocomotionBoolName(Animator animator)
+    {
+        if (string.IsNullOrEmpty(_defaultLocomotionBoolName))
+        {
+            return string.Empty;
+        }
+
+        return HasParam(animator, _defaultLocomotionBoolName, AnimatorControllerParameterType.Bool)
+            ? _defaultLocomotionBoolName
+            : string.Empty;
     }
 
     private WeaponAnimBinding FindWeaponBinding(WeaponType weaponType)

@@ -47,6 +47,16 @@ public class AttackData_SO : ScriptableObject
     public bool canMoveWhileAttack = true;
     public bool useUpperBodyMoveAttackPresentation;
 
+    [Header("Directional Aim")]
+    [Tooltip("Whether this attack profile can consume directional aim input for free-aim attacks and lock-on transitions.")]
+    public bool useDirectionalAimInput = false;
+    [Tooltip("Whether this attack profile can consume the normalized attack-facing input. For player gamepad this is fed by the left stick, while keyboard keeps using the legacy mouse aim path.")]
+    public bool useAttackFacingInput = false;
+    [Tooltip("When not locked, keep facing the directional aim while moving.")]
+    public bool keepDirectionalAimFacingWhileMoving = true;
+    [Tooltip("When directional aim is active, 8-dir locomotion can stay in strafe mode instead of forward-only movement.")]
+    public bool useDirectionalStrafeLocomotion = true;
+
     [Header("Logic Hit")]
     public bool useLogicHitResolution = true;
     public float logicHitDelay = 0.08f;
@@ -90,6 +100,16 @@ public class AttackData_SO : ScriptableObject
     public float maxChargeTime = 1.2f;
     [Tooltip("松手释放时默认使用的动画 key。为空时回退到 attackAnimKey。")]
     public string chargeReleaseAnimKey = "Attack";
+    [Tooltip("对于弓这类蓄力武器，蓄力过程中按下闪避时，是否先射出当前这一箭再开始闪避。")]
+    public bool releaseChargeAttackOnDodge = true;
+
+    [Header("Dodge Attack")]
+    [Tooltip("闪避结束后，这段时间内触发的下一次普攻视为闪避后攻击。0 表示关闭。")]
+    public float dodgeAttackWindow = 0.18f;
+    [Tooltip("给未来伤害系统预留的闪避后首击伤害倍率口子。当前仅写入攻击上下文，不直接改伤害。")]
+    public float dodgeAttackDamageMultiplier = 1f;
+    [Tooltip("给未来伤害系统预留的闪避后首击额外伤害口子。当前仅写入攻击上下文，不直接改伤害。")]
+    public float dodgeAttackDamageBonus = 0f;
 
     [Header("Basic Attack VFX")]
     public GameObject attackCastVfx;
@@ -129,6 +149,10 @@ public class AttackData_SO : ScriptableObject
         comboResetTime = weapon.comboResetTime;
         canMoveWhileAttack = weapon.canMoveWhileAttack;
         useUpperBodyMoveAttackPresentation = weapon.useUpperBodyMoveAttackPresentation;
+        useDirectionalAimInput = weapon.useDirectionalAimInput;
+        useAttackFacingInput = weapon.useAttackFacingInput;
+        keepDirectionalAimFacingWhileMoving = weapon.keepDirectionalAimFacingWhileMoving;
+        useDirectionalStrafeLocomotion = weapon.useDirectionalStrafeLocomotion;
         projectilePrefab = weapon.projectilePrefab;
         projectileSpeed = weapon.projectileSpeed;
         homingTurnSpeed = weapon.homingTurnSpeed;
@@ -156,6 +180,10 @@ public class AttackData_SO : ScriptableObject
         minChargeTime = weapon.minChargeTime;
         maxChargeTime = weapon.maxChargeTime;
         chargeReleaseAnimKey = weapon.chargeReleaseAnimKey;
+        releaseChargeAttackOnDodge = weapon.releaseChargeAttackOnDodge;
+        dodgeAttackWindow = weapon.dodgeAttackWindow;
+        dodgeAttackDamageMultiplier = weapon.dodgeAttackDamageMultiplier;
+        dodgeAttackDamageBonus = weapon.dodgeAttackDamageBonus;
         attackCastVfx = weapon.attackCastVfx;
         attackHitVfx = weapon.attackHitVfx;
         attackVfxPointName = weapon.attackVfxPointName;

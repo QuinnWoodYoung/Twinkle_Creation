@@ -53,6 +53,7 @@ public class PlayerInputManager : MonoBehaviour
             playerInputMap.GamePlay.Attack.performed += OnAttackPerformed;
             playerInputMap.GamePlay.Attack.canceled += OnAttackCanceled;
             playerInputMap.GamePlay.Lock.performed += OnLockPerformed;
+            playerInputMap.GamePlay.Lock.canceled += OnLockCanceled;
             playerInputMap.GamePlay.Dodge.performed += OnDodgePerformed;
             playerInputMap.GamePlay.Dodge.canceled += OnDodgeCanceled;
 
@@ -247,7 +248,17 @@ public class PlayerInputManager : MonoBehaviour
             return;
         }
 
-        playerInputLockValue = !playerInputLockValue;
+        playerInputLockValue = context.ReadValueAsButton();
+    }
+
+    private void OnLockCanceled(InputAction.CallbackContext context)
+    {
+        if (!ShouldProcessContext(context))
+        {
+            return;
+        }
+
+        playerInputLockValue = false;
     }
 
     private void OnDodgePerformed(InputAction.CallbackContext context)

@@ -25,8 +25,11 @@ public class CharParam
 {
     public Vector2 Locomotion;
     public Vector2 AimTarget;
+    public Vector2 AimDirection;
+    public Vector2 AttackFacingInput;
     public bool isLock;
     public AttackInputState AttackState;
+    public ButtonInputState LockState;
     public bool Dodge;
     public readonly List<bool> SkillInputDown = new List<bool>();
     public readonly List<ButtonInputState> SkillInputStates = new List<ButtonInputState>();
